@@ -2,6 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto'; // <-- Importado para generar el token
+import { Resend } from 'resend'; // <-- Importado para enviar correos
 import pkg from '@prisma/client';
 const { PrismaClient } = pkg;
 
@@ -20,6 +22,9 @@ const prisma = new PrismaClient({ adapter });
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Inicializar Resend con tu clave API del archivo .env
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 app.get('/', (req, res) => {
   res.send('Servidor de CoLabTy funcionando al 100% 🚀');
@@ -90,6 +95,65 @@ app.post('/api/login', async (req, res) => {
   } catch (error) {
     console.error('Error en el login:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// --- 2.5 RUTA DE RECUPERACIÓN DE CONTRASEÑA (RESEND) ---
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    
+    if (!user) {
+      // Respondemos éxito por seguridad para no revelar si un correo existe o no
+      return res.status(200).json({ message: 'Si el correo está registrado, recibirás un enlace.' });
+    }
+
+    // 1. Generar token único y expiración (1 hora)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiry = new Date(Date.now() + 3600000); 
+
+    // 2. Guardar token en Prisma
+    await prisma.user.update({
+      where: { email },
+      data: {
+        resetPasswordToken: resetToken,
+        resetPasswordExpires: tokenExpiry,
+      },
+    });
+
+    // 3. Crear el enlace que apunta al frontend
+    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+
+    // 4. Enviar correo usando Resend
+    const { data, error } = await resend.emails.send({
+      from: 'CoLabTy <onboarding@resend.dev>', // Correo por defecto de Resend para pruebas
+      to: user.email, 
+      subject: 'Recuperación de contraseña - CoLabTy',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+          <h2 style="color: #312e81; text-align: center;">CoLabTy.</h2>
+          <h3 style="color: #333;">Hola, ${user.name}</h3>
+          <p style="color: #555; line-height: 1.5;">Has solicitado restablecer tu contraseña en CoLabTy. Para hacerlo, haz clic en el siguiente botón:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Restablecer mi contraseña</a>
+          </div>
+          <p style="color: #555; font-size: 14px;">Este enlace expirará en 1 hora por motivos de seguridad.</p>
+          <p style="color: #777; font-size: 12px; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 10px;">Si no solicitaste este cambio, ignora este correo. Tu cuenta seguirá protegida.</p>
+        </div>
+      `
+    });
+
+    if (error) {
+      console.error('Error de Resend:', error);
+      return res.status(500).json({ error: 'No se pudo enviar el correo.' });
+    }
+
+    res.status(200).json({ message: 'Correo enviado. Revisa tu bandeja de entrada o spam.' });
+  } catch (error) {
+    console.error('Error en el servidor al recuperar contraseña:', error);
+    res.status(500).json({ error: 'Hubo un error al procesar la solicitud' });
   }
 });
 
@@ -440,7 +504,8 @@ io.on('connection', (socket) => {
     socket.join(boardId);
     console.log(`Usuario ${socket.id} se unió a la sala del tablero: ${boardId}`);
   });
-// Escuchar mensajes y guardarlos en la BD, luego emitirlos a la sala
+
+  // Escuchar mensajes y guardarlos en la BD, luego emitirlos a la sala
   socket.on('send_message', async (data) => {
     try {
       // Soportar tanto data.content como data.message por seguridad
@@ -473,7 +538,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('Usuario desconectado del chat');
   });
-}); // <--- Cierra io.on('connection')
+});
 
 // ==========================================
 // --- INICIO DEL SERVIDOR HTTP + SOCKETS ---

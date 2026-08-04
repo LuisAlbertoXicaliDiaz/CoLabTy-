@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
-export default function Login() {
+export default function ForgotPassword() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const navigate = useNavigate();
+  const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   // Estado para el selector de temas
   const [theme, setTheme] = useState(localStorage.getItem('colabty_theme') || 'dark');
@@ -15,33 +15,37 @@ export default function Login() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); 
-    
+    e.preventDefault();
+    setIsLoading(true);
+    setMessage('');
+
     try {
-      const response = await fetch('http://localhost:4000/api/login', {
+      // Aquí conectaremos con el backend más adelante
+      const response = await fetch('http://localhost:4000/api/forgot-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-        navigate('/dashboard');
+        setMessage('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.');
       } else {
-        alert('Error: ' + data.error);
+        alert('Error: ' + (data.error || 'No se pudo procesar la solicitud.'));
       }
-
     } catch (error) {
       console.error('Error al conectar con el backend:', error);
-      alert('Hubo un problema al conectar con el servidor.');
+      // Mock de éxito visual para pruebas en caso de que el endpoint no exista aún
+      setMessage('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Mapeo de colores según el tema seleccionado manteniendo tu diseño exacto
+  // Mapeo de colores según el tema seleccionado
   const themesConfig = {
     dark: {
       bg: 'bg-slate-950 text-slate-100',
@@ -106,20 +110,12 @@ export default function Login() {
         <div className="relative z-10 w-full max-w-xl text-white">
           <h1 className="text-5xl font-black tracking-tighter mb-6">CoLabTy.</h1>
           <p className="text-3xl font-light leading-tight mb-8">
-            La forma inteligente de planificar, ejecutar y <span className="font-semibold text-violet-300">conectar a tu equipo.</span>
+            Recupera tu acceso y sigue construyendo <span className="font-semibold text-violet-300">con tu equipo.</span>
           </p>
-          
-          <div className="flex items-center gap-4 text-indigo-200 text-sm font-medium mt-12 border-t border-indigo-800/50 pt-6">
-            <span>✓ Tableros Kanban</span>
-            <span>•</span>
-            <span>✓ Chat Integrado</span>
-            <span>•</span>
-            <span>✓ Carga de Trabajo</span>
-          </div>
         </div>
       </div>
 
-      {/* Sección Derecha: Formulario de Login */}
+      {/* Sección Derecha: Formulario de Recuperación */}
       <div className={`w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 ${currentTheme.rightBg}`}>
         <div className="w-full max-w-md space-y-10">
           
@@ -128,11 +124,20 @@ export default function Login() {
           </div>
 
           <div>
-            <h2 className={`text-3xl font-bold ${currentTheme.textColor}`}>Bienvenido de vuelta</h2>
-            <p className={`mt-2 ${currentTheme.mutedText}`}>Ingresa tus credenciales para acceder a tu workspace.</p>
+            <h2 className={`text-3xl font-bold ${currentTheme.textColor}`}>Recuperar Contraseña</h2>
+            <p className={`mt-2 ${currentTheme.mutedText}`}>
+              Ingresa el correo electrónico asociado a tu cuenta y te enviaremos las instrucciones para restablecer tu acceso.
+            </p>
           </div>
 
-          {/* Formulario conectado */}
+          {/* Mensaje de confirmación */}
+          {message && (
+            <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-medium text-sm">
+              {message}
+            </div>
+          )}
+
+          {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-6">
             
             <div className="space-y-2">
@@ -150,42 +155,19 @@ export default function Login() {
               />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className={`text-sm font-bold tracking-wide ${currentTheme.textColor}`} htmlFor="password">
-                  Contraseña
-                </label>
-                {/* AQUÍ ESTÁ EL CAMBIO */}
-                <Link 
-                  to="/forgot-password" 
-                  className="text-sm text-indigo-500 hover:text-indigo-400 font-bold transition-colors"
-                >
-                  ¿La olvidaste?
-                </Link>
-              </div>
-              <input 
-                type="password" 
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all font-medium ${currentTheme.inputBg}`}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-
             <button 
               type="submit" 
-              className={`w-full font-bold text-lg py-3.5 px-4 rounded-xl transition-all hover:-translate-y-0.5 active:translate-y-0 mt-4 cursor-pointer ${currentTheme.btnBg}`}
+              disabled={isLoading}
+              className={`w-full font-bold text-lg py-3.5 px-4 rounded-xl transition-all hover:-translate-y-0.5 active:translate-y-0 mt-4 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${currentTheme.btnBg}`}
             >
-              Iniciar Sesión
+              {isLoading ? 'Enviando...' : 'Enviar Instrucciones'}
             </button>
           </form>
 
           <div className={`text-center pt-6 font-medium ${currentTheme.mutedText}`}>
-            ¿Nuevo en CoLabTy?{' '}
-            <Link to="/register" className="text-indigo-500 font-bold hover:text-indigo-400 transition-colors">
-              Crea tu cuenta gratis
+            ¿Recordaste tu contraseña?{' '}
+            <Link to="/login" className="text-indigo-500 font-bold hover:text-indigo-400 transition-colors">
+              Volver a Iniciar Sesión
             </Link>
           </div>
 

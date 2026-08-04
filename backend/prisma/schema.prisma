@@ -9,16 +9,18 @@ datasource db {
 // --- Tablas de CoLabTy ---
 
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   Int       @id @default(autoincrement())
+  name                 String
+  email                String    @unique
+  password             String
+  resetPasswordToken   String?   // Token temporal para recuperar contraseña
+  resetPasswordExpires DateTime? // Fecha y hora de expiración del token
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  boards      Board[]     // Tableros creados por el usuario
-  userBoards  UserBoard[] // Tableros donde ha sido invitado
-  messages    Message[]   // Mensajes enviados en el chat
+  boards               Board[]     // Tableros creados por el usuario
+  userBoards           UserBoard[] // Tableros donde ha sido invitado
+  messages             Message[]   // Mensajes enviados en el chat
 }
 
 model Board {
@@ -81,3 +83,4 @@ model UserBoard {
 
   @@unique([userId, boardId])
 }
+
