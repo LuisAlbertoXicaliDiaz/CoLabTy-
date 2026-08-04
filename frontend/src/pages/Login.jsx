@@ -1,17 +1,43 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // <-- Agregamos useNavigate
 
 export default function Login() {
-  // 1. Declaramos los estados para guardar lo que el usuario escribe
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate(); // <-- Inicializamos la función para cambiar de página
 
-  // 2. Función que se ejecuta al enviar el formulario
-  const handleSubmit = (e) => {
-    e.preventDefault(); // Evita que la página se recargue
-    console.log('Enviando datos de Login al servidor:', { email, password });
+  // Convertimos la función a asíncrona (async)
+  const handleSubmit = async (e) => {
+    e.preventDefault(); 
     
-    // Aquí es donde en el futuro haremos el "fetch" a tu backend (Express)
+    try {
+      // Hacemos la petición a la nueva ruta de login en el backend
+      const response = await fetch('http://localhost:4000/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Si las credenciales son correctas
+        alert('¡' + data.message + ' Bienvenido ' + data.user.name + '!');
+        
+        // Aquí redirigimos al usuario a la pantalla principal de la app
+        // navigate('/dashboard'); // Descomenta esta línea cuando crees tu pantalla de Dashboard
+        
+      } else {
+        // Si la contraseña o el correo son incorrectos
+        alert('Error: ' + data.error);
+      }
+
+    } catch (error) {
+      console.error('Error al conectar con el backend:', error);
+      alert('Hubo un problema al conectar con el servidor.');
+    }
   };
 
   return (
@@ -51,7 +77,7 @@ export default function Login() {
             <p className="text-slate-500 mt-2">Ingresa tus credenciales para acceder a tu workspace.</p>
           </div>
 
-          {/* 3. Conectamos el formulario a nuestra función */}
+          {/* Formulario conectado */}
           <form onSubmit={handleSubmit} className="space-y-6">
             
             <div className="space-y-2">
@@ -61,7 +87,6 @@ export default function Login() {
               <input 
                 type="email" 
                 id="email"
-                // 4. Conectamos el input a su variable de estado
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
@@ -82,7 +107,6 @@ export default function Login() {
               <input 
                 type="password" 
                 id="password"
-                // 4. Conectamos el input a su variable de estado
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
@@ -91,7 +115,6 @@ export default function Login() {
               />
             </div>
 
-            {/* 5. IMPORTANTE: Cambiar type="button" a type="submit" */}
             <button 
               type="submit" 
               className="w-full bg-indigo-950 hover:bg-indigo-900 text-white font-bold text-lg py-3.5 px-4 rounded-xl transition-all shadow-[0_4px_14px_0_rgba(49,46,129,0.39)] hover:shadow-[0_6px_20px_rgba(49,46,129,0.23)] hover:-translate-y-0.5 active:translate-y-0 mt-4"
