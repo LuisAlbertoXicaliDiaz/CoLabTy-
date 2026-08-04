@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import bcrypt from 'bcrypt'; // <-- NUEVO: Para encriptar
+import bcrypt from 'bcrypt';
 import pkg from '@prisma/client';
 const { PrismaClient } = pkg;
 
@@ -21,7 +21,7 @@ app.get('/', (req, res) => {
   res.send('Servidor de CoLabTy funcionando al 100% 🚀');
 });
 
-// --- 1. RUTA DE REGISTRO (Ahora con encriptación) ---
+// --- 1. RUTA DE REGISTRO ---
 app.post('/api/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -30,7 +30,6 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'Todos los campos son obligatorios' });
     }
 
-    // NUEVO: Encriptar la contraseña (10 es el nivel de seguridad estándar)
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
@@ -38,7 +37,7 @@ app.post('/api/register', async (req, res) => {
       data: {
         name,
         email,
-        password: hashedPassword, // Guardamos la contraseña revuelta, no la original
+        password: hashedPassword,
       },
     });
 
@@ -56,7 +55,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// --- 2. NUEVA RUTA DE LOGIN ---
+// --- 2. RUTA DE LOGIN ---
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -65,24 +64,20 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ error: 'Correo y contraseña son obligatorios' });
     }
 
-    // Buscar al usuario en la base de datos por su correo
     const user = await prisma.user.findUnique({
       where: { email }
     });
 
-    // Si no existe el usuario, damos error genérico por seguridad
     if (!user) {
       return res.status(401).json({ error: 'Credenciales incorrectas' });
     }
 
-    // Comparar la contraseña que escribió con la encriptada en la base de datos
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Credenciales incorrectas' });
     }
 
-    // Si todo coincide, damos luz verde
     res.status(200).json({ 
       message: '¡Inicio de sesión exitoso!',
       user: { id: user.id, name: user.name, email: user.email }
@@ -90,6 +85,66 @@ app.post('/api/login', async (req, res) => {
 
   } catch (error) {
     console.error('Error en el login:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ==========================================
+// --- 3. RUTAS DE TABLEROS KANBAN ---
+// ==========================================
+
+// Obtener todos los tableros de un usuario específico
+app.get('/api/boards/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const boards = await prisma.board.findMany({
+      where: { userId: parseInt(userId) },
+      include: {
+        columns: {
+          include: { tasks: true },
+          orderBy: { order: 'asc' }
+        }
+      }
+    });
+
+    res.status(200).json(boards);
+  } catch (error) {
+    console.error('Error al obtener tableros:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Crear un nuevo tablero (con sus columnas por defecto)
+app.post('/api/boards', async (req, res) => {
+  try {
+    const { title, userId } = req.body;
+
+    if (!title || !userId) {
+      return res.status(400).json({ error: 'El título y el usuario son obligatorios' });
+    }
+
+    const newBoard = await prisma.board.create({
+      data: {
+        title,
+        userId: parseInt(userId),
+        columns: {
+          create: [
+            { title: 'Por Hacer', order: 1 },
+            { title: 'En Progreso', order: 2 },
+            { title: 'Completado', order: 3 }
+          ]
+        }
+      },
+      include: {
+        columns: true
+      }
+    });
+
+    res.status(201).json({ message: '¡Tablero creado con éxito!', board: newBoard });
+
+  } catch (error) {
+    console.error('Error al crear tablero:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
