@@ -14,7 +14,7 @@
 
 ## 💡 Sobre el Proyecto
 
-**TalentHub México** es una aplicación web diseñada para potenciar la colaboración en equipo. Permite la gestión de tableros de trabajo y cuenta con un **sistema de chat integrado en tiempo real** por cada tablero mediante WebSockets, facilitando la comunicación fluida entre compañeros y equipos de desarrollo.
+**CoLabTy** es una aplicación web diseñada para potenciar la colaboración en equipo. Permite la gestión de tableros de trabajo y cuenta con un **sistema de chat integrado en tiempo real** por cada tablero mediante WebSockets, facilitando la comunicación fluida entre compañeros y equipos de desarrollo.
 
 ---
 
@@ -34,7 +34,7 @@
 Sigue estos sencillos pasos para echar a andar el proyecto en tu entorno de desarrollo local:
 
 ### 1. Clonar el repositorio y preparar el Backend
-Abre tu terminal, clonar el proyecto y entra a la carpeta del servidor:
+Abre tu terminal, clona el proyecto y entra a la carpeta del servidor:
 ```bash
 cd backend
 2. Configurar las Variables de Entorno
@@ -62,6 +62,7 @@ Terminal 1 — Backend & WebSockets
 Bash
 cd backend
 node index.js
+
 Terminal 2 — Frontend (Interfaz)
 
 Bash
