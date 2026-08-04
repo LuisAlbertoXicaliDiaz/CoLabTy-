@@ -1,12 +1,24 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 export default function Login() {
+  // 1. Declaramos los estados para guardar lo que el usuario escribe
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  // 2. Función que se ejecuta al enviar el formulario
+  const handleSubmit = (e) => {
+    e.preventDefault(); // Evita que la página se recargue
+    console.log('Enviando datos de Login al servidor:', { email, password });
+    
+    // Aquí es donde en el futuro haremos el "fetch" a tu backend (Express)
+  };
+
   return (
     <div className="min-h-screen flex w-full bg-white font-sans">
       
-      {/* Sección Izquierda: Identidad de Marca (Se oculta en celulares) */}
+      {/* Sección Izquierda: Identidad de Marca */}
       <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-indigo-950 via-indigo-900 to-violet-800 p-12 relative overflow-hidden items-end">
-        {/* Círculos decorativos de fondo (CSS puro) */}
         <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
         <div className="absolute top-[20%] right-[-10%] w-72 h-72 bg-violet-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
 
@@ -30,7 +42,6 @@ export default function Login() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12">
         <div className="w-full max-w-md space-y-10">
           
-          {/* Encabezado Móvil (Solo visible si no está la pantalla dividida) */}
           <div className="lg:hidden text-center mb-8">
             <h1 className="text-4xl font-black text-indigo-950 tracking-tighter">CoLabTy.</h1>
           </div>
@@ -40,8 +51,9 @@ export default function Login() {
             <p className="text-slate-500 mt-2">Ingresa tus credenciales para acceder a tu workspace.</p>
           </div>
 
-          <form className="space-y-6">
-            {/* Campo Correo */}
+          {/* 3. Conectamos el formulario a nuestra función */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            
             <div className="space-y-2">
               <label className="text-sm font-bold text-slate-900 tracking-wide" htmlFor="email">
                 Correo Electrónico
@@ -49,12 +61,15 @@ export default function Login() {
               <input 
                 type="email" 
                 id="email"
+                // 4. Conectamos el input a su variable de estado
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
                 placeholder="ejemplo@empresa.com"
+                required
               />
             </div>
 
-            {/* Campo Contraseña */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label className="text-sm font-bold text-slate-900 tracking-wide" htmlFor="password">
@@ -67,21 +82,24 @@ export default function Login() {
               <input 
                 type="password" 
                 id="password"
+                // 4. Conectamos el input a su variable de estado
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
                 placeholder="••••••••"
+                required
               />
             </div>
 
-            {/* Botón Ingresar */}
+            {/* 5. IMPORTANTE: Cambiar type="button" a type="submit" */}
             <button 
-              type="button" 
+              type="submit" 
               className="w-full bg-indigo-950 hover:bg-indigo-900 text-white font-bold text-lg py-3.5 px-4 rounded-xl transition-all shadow-[0_4px_14px_0_rgba(49,46,129,0.39)] hover:shadow-[0_6px_20px_rgba(49,46,129,0.23)] hover:-translate-y-0.5 active:translate-y-0 mt-4"
             >
               Iniciar Sesión
             </button>
           </form>
 
-          {/* Enlace a Registro */}
           <div className="text-center pt-6 text-slate-600 font-medium">
             ¿Nuevo en CoLabTy?{' '}
             <Link to="/register" className="text-indigo-600 font-bold hover:text-indigo-800 transition-colors">
