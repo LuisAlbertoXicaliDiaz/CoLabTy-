@@ -63,6 +63,26 @@ export default function Boards() {
     }
   };
 
+  // Función para eliminar un tablero completo
+  const handleDeleteBoard = async (e, boardId) => {
+    e.stopPropagation(); // Evita que se abra el tablero al hacer clic en la "X"
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este tablero y todas sus tareas?')) return;
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/boards/${boardId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        setBoards(boards.filter(b => b.id !== boardId));
+      } else {
+        alert('Error al eliminar el tablero');
+      }
+    } catch (error) {
+      console.error('Error al eliminar el tablero:', error);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('user');
     navigate('/login');
@@ -84,7 +104,7 @@ export default function Boards() {
           </Link>
           
           <Link to="/boards" className="flex items-center gap-3 px-3 py-2.5 bg-indigo-600 rounded-lg text-white font-medium transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
             Mis Tableros
           </Link>
           
@@ -148,10 +168,19 @@ export default function Boards() {
                 <Link 
                   to={`/boards/${board.id}`}
                   key={board.id} 
-                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-40 cursor-pointer group border-l-4 border-l-indigo-600"
+                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-40 cursor-pointer group border-l-4 border-l-indigo-600 relative"
                 >
+                  <div className="flex justify-between items-start">
+                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors pr-6">{board.title}</h3>
+                    <button 
+                      onClick={(e) => handleDeleteBoard(e, board.id)}
+                      className="text-slate-400 hover:text-red-600 font-bold p-1 rounded-lg hover:bg-slate-100 transition-colors z-10 cursor-pointer"
+                      title="Eliminar tablero"
+                    >
+                      ✕
+                    </button>
+                  </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{board.title}</h3>
                     <p className="text-xs text-slate-400 mt-1">Creado el {new Date(board.createdAt).toLocaleDateString()}</p>
                   </div>
                   <div className="flex justify-between items-center text-sm font-semibold text-slate-500 pt-4 border-t border-slate-100">

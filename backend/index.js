@@ -203,24 +203,57 @@ app.post('/api/tasks', async (req, res) => {
     }
 
     const taskCount = await prisma.task.count({
-      where: { columnId: parseInt(columnId) }
+      where: { columnId: columnId }
     });
 
     const newTask = await prisma.task.create({
       data: {
         content,
-        columnId: parseInt(columnId),
+        columnId: columnId,
         order: taskCount + 1
       }
     });
 
-    res.status(201).json({ message: '¡Tarea creada con éxito!', task: newTask });
+    return res.status(201).json({ message: '¡Tarea creada con éxito!', task: newTask });
   } catch (error) {
     console.error('Error al crear tarea:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// --- 5. RUTA PARA ELIMINAR TAREAS ---
+app.delete('/api/tasks/:taskId', async (req, res) => {
+  try {
+    const { taskId } = req.params;
+
+    await prisma.task.delete({
+      where: { id: taskId }
+    });
+
+    res.status(200).json({ message: '¡Tarea eliminada con éxito!' });
+  } catch (error) {
+    console.error('Error al eliminar tarea:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
+// --- 6. RUTA PARA ELIMINAR TABLEROS ---
+app.delete('/api/boards/:boardId', async (req, res) => {
+  try {
+    const { boardId } = req.params;
+
+    await prisma.board.delete({
+      where: { id: boardId }
+    });
+
+    res.status(200).json({ message: '¡Tablero eliminado con éxito!' });
+  } catch (error) {
+    console.error('Error al eliminar tablero:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// --- INICIO DEL SERVIDOR ---
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);

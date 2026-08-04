@@ -40,6 +40,22 @@ export default function BoardDetail() {
     }
   };
 
+  // Función para eliminar una tarea
+  const handleDeleteTask = async (taskId) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/tasks/${taskId}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        fetchBoardDetails(id); // Recargamos el tablero
+      } else {
+        alert('Error al eliminar la tarea');
+      }
+    } catch (error) {
+      console.error('Error al eliminar la tarea:', error);
+    }
+  };
+
   // Función para agregar una tarea
   const handleCreateTask = async (e, columnId) => {
     e.preventDefault();
@@ -58,7 +74,6 @@ export default function BoardDetail() {
       const data = await response.json();
 
       if (response.ok) {
-        // Recargamos el tablero para ver la nueva tarea reflejada
         fetchBoardDetails(id);
         setNewTaskContent('');
         setActiveColumnId(null);
@@ -124,8 +139,15 @@ export default function BoardDetail() {
               {/* Lista de Tareas */}
               <div className="flex-1 overflow-y-auto space-y-3 pr-1">
                 {column.tasks?.map((task) => (
-                  <div key={task.id} className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm text-slate-800 text-sm font-medium">
-                    {task.content}
+                  <div key={task.id} className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm text-slate-800 text-sm font-medium flex justify-between items-start group">
+                    <span className="flex-1 mr-2">{task.content}</span>
+                    <button 
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="text-slate-300 hover:text-red-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      title="Eliminar tarea"
+                    >
+                      ✕
+                    </button>
                   </div>
                 ))}
               </div>
