@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🚀 TalentHub México
+# 🚀 CoLabTy
 ### *Plataforma colaborativa y de gestión de proyectos en tiempo real*
 
 [![Node.js](https://img.shields.io/badge/Node.js-v18+-green.svg?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
