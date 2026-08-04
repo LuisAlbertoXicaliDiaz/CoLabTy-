@@ -8,8 +8,8 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // 2. Función que maneja el envío
-  const handleSubmit = (e) => {
+  // 2. Función que maneja el envío (¡Ahora conectada al backend!)
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validación básica en el frontend
@@ -18,8 +18,37 @@ export default function Register() {
       return;
     }
 
-    console.log('Enviando datos de Registro:', { name, email, password });
-    // Aquí es donde tu backend registrará al usuario en la base de datos
+    try {
+      // Hacemos la petición a nuestro servidor local
+      const response = await fetch('http://localhost:4000/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Enviamos los estados exactos de tu componente
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Si todo sale bien
+        alert('¡' + data.message + '!');
+        
+        // Limpiamos los campos después del registro exitoso
+        setName('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+      } else {
+        // Si hay un error (como un correo repetido)
+        alert('Error: ' + data.error);
+      }
+
+    } catch (error) {
+      console.error('Error al conectar con el backend:', error);
+      alert('Hubo un problema al conectar con el servidor.');
+    }
   };
 
   return (
@@ -155,4 +184,4 @@ export default function Register() {
       
     </div>
   );
-}
+} 
