@@ -1,76 +1,77 @@
-Markdown
+<div align="center">
+
 # 🚀 CoLabTy
+### *Plataforma colaborativa y de gestión de proyectos en tiempo real*
 
-> La plataforma inteligente de colaboración y gestión de proyectos para equipos modernos.
+[![Node.js](https://img.shields.io/badge/Node.js-v18+-green.svg?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-Vite-blue.svg?style=for-the-badge&logo=react)](https://react.dev/)
+[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748.svg?style=for-the-badge&logo=prisma)](https://www.prisma.io/)
+[![Socket.io](https://img.shields.io/badge/Socket.io-Realtime-010101.svg?style=for-the-badge&logo=socket.io)](https://socket.io/)
 
-## 📋 Descripción del Proyecto
-**CoLabTy** es una aplicación Web Full-Stack diseñada para optimizar la organización de equipos de trabajo, ofreciendo un flujo completo de autenticación de usuarios, gestión de workspaces y tableros Kanban interactivos.
-
----
-
-## 🛠️ Tecnologías Utilizadas
-
-### Frontend
-* **React** (con Vite)
-* **React Router DOM** (Gestión de rutas y navegación)
-* **Tailwind CSS** (Diseño y estilos modernos)
-
-### Backend
-* **Node.js & Express.js** (API RESTful)
-* **Prisma ORM (v7)** (Gestión y mapeo de objetos para la base de datos)
-* **PostgreSQL** (Base de datos relacional alojada en **Neon**)
-* **Bcrypt** (Encriptación segura de credenciales)
+</div>
 
 ---
 
-## 📂 Estructura del Repositorio
+## 💡 Sobre el Proyecto
 
-```text
-CoLabTy-/
-├── backend/            # Servidor API, modelos Prisma y rutas
-│   ├── prisma/         # Esquema y migraciones de la BD
-│   ├── index.js        # Punto de entrada de Express
-│   └── prisma.config.ts# Configuración de Prisma v7
-└── frontend/           # Interfaz de usuario en React
-    ├── src/
-    │   ├── pages/      # Vistas (Login, Register, Dashboard)
-    │   └── ...
-    └── package.json
-⚙️ Guía de Instalación y Dependencias
-Para levantar este proyecto en tu entorno local, necesitarás abrir dos terminales simultáneamente (una para el Backend y otra para el Frontend).
+**CoLabTy** es una aplicación web diseñada para potenciar la colaboración en equipo. Permite la gestión de tableros de trabajo y cuenta con un **sistema de chat integrado en tiempo real** por cada tablero mediante WebSockets, facilitando la comunicación fluida entre compañeros y equipos de desarrollo.
 
-1. Configurar y arrancar el Backend
-Entra a la carpeta del backend e instala las dependencias necesarias:
+---
+
+## 🛠️ Stack Tecnológico
+
+| Componente | Tecnología | Propósito |
+| :--- | :--- | :--- |
+| **Frontend** | React + Vite | Interfaz de usuario dinámica, moderna y optimizada para dispositivos móviles y escritorio. |
+| **Backend** | Node.js & Express | Servidor API RESTful para la lógica de negocio y autenticación. |
+| **Tiempo Real** | Socket.io | Sincronización instantánea de mensajes y actualizaciones en los tableros. |
+| **Base de Datos** | PostgreSQL & Prisma ORM | Modelado relacional seguro y consultas eficientes de usuarios, tableros y mensajes. |
+
+---
+
+## ⚙️ Guía de Instalación y Configuración Local
+
+Sigue estos sencillos pasos para echar a andar el proyecto en tu entorno de desarrollo local:
+
+### 1. Clonar el repositorio y preparar el Backend
+Abre tu terminal, clona el proyecto y entra a la carpeta del servidor:
+```bash
+cd backend
+2. Configurar las Variables de Entorno
+Crea un archivo llamado exactamente .env dentro de la carpeta backend y define tu conexión a la base de datos:
+
+Fragmento de código
+DATABASE_URL="tu_cadena_de_conexion_de_postgresql"
+PORT=4000
+3. Instalar Dependencias y Generar Prisma
+Instalar dependencias del Backend y generar el cliente:
+
+Bash
+npm install
+npx prisma generate
+Instalar dependencias del Frontend:
+
+Bash
+cd ../frontend
+npm install
+🚀 Ejecución del Proyecto
+Para correr la plataforma al 100%, necesitarás dos terminales abiertas simultáneamente:
+
+Terminal 1 — Backend & WebSockets
 
 Bash
 cd backend
-npm install express cors dotenv bcrypt @prisma/client @prisma/adapter-pg pg
-npm install -D prisma dotenv
-Asegúrate de tener tu archivo .env configurado con tu variable DATABASE_URL conectada a Neon, y arranca el servidor:
-
-Bash
 node index.js
-(El servidor correrá por defecto en http://localhost:4000)
 
-2. Configurar y arrancar el Frontend
-En una segunda terminal, entra a la carpeta del frontend e instala las dependencias:
+Terminal 2 — Frontend (Interfaz)
 
 Bash
 cd frontend
-npm install react-router-dom
-npm install -D tailwindcss postcss autoprefixer
-Arranca el servidor de desarrollo de React:
-
-Bash
 npm run dev
-(El frontend correrá típicamente en http://localhost:5173)
+¡Listo! Abre el enlace proporcionado por Vite en tu navegador (usualmente http://localhost:5173) y disfruta de la aplicación.
 
-🗄️ Comandos Útiles de Base de Datos (Prisma)
-Si necesitas administrar la base de datos durante el desarrollo:
+📊 Administración Visual de la Base de Datos
+Si necesitas inspeccionar, modificar o agregar datos directamente en tus tablas de forma gráfica, puedes utilizar Prisma Studio ejecutando el siguiente comando en la carpeta del backend:
 
 Bash
-# Aplicar migraciones pendientes a la base de datos en Neon
-npx prisma migrate dev
-
-# Abrir la interfaz gráfica web para visualizar los registros (Prisma Studio)
 npx prisma studio
