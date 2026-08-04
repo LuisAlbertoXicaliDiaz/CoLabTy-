@@ -1,9 +1,18 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Dashboard from './pages/Dashboard'
+
 function App() {
   return (
-    <div>
-      <h1>Frontend de CoLabTy listo</h1>
-      <p>Lienzo en blanco para empezar a diseñar.</p>
-    </div>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      
+      {/* Ruta por defecto: redirige al login si entras a la raíz */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
+    </Routes>
   )
 }
 
