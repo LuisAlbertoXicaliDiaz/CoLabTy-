@@ -9,7 +9,6 @@ export default function Boards() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // 1. Cargar usuario y sus tableros al iniciar
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -21,7 +20,6 @@ export default function Boards() {
     }
   }, [navigate]);
 
-  // Función para pedir los tableros al Backend
   const fetchBoards = async (userId) => {
     try {
       const response = await fetch(`http://localhost:4000/api/boards/${userId}`);
@@ -36,7 +34,6 @@ export default function Boards() {
     }
   };
 
-  // 2. Función para crear un nuevo tablero
   const handleCreateBoard = async (e) => {
     e.preventDefault();
     if (!newBoardTitle.trim()) return;
@@ -54,9 +51,9 @@ export default function Boards() {
       const data = await response.json();
 
       if (response.ok) {
-        setBoards([...boards, data.board]); // Agregamos el nuevo tablero a la lista visual
+        setBoards([...boards, data.board]);
         setNewBoardTitle('');
-        setIsModalOpen(false); // Cerramos el modal
+        setIsModalOpen(false);
       } else {
         alert('Error: ' + data.error);
       }
@@ -75,8 +72,6 @@ export default function Boards() {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans">
-      
-      {/* SIDEBAR */}
       <aside className="hidden md:flex flex-col w-64 bg-indigo-950 text-white shadow-xl">
         <div className="h-16 flex items-center px-6 border-b border-indigo-900/50">
           <h1 className="text-2xl font-black tracking-tighter text-white">CoLabTy.</h1>
@@ -89,7 +84,7 @@ export default function Boards() {
           </Link>
           
           <Link to="/boards" className="flex items-center gap-3 px-3 py-2.5 bg-indigo-600 rounded-lg text-white font-medium transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
             Mis Tableros
           </Link>
           
@@ -112,9 +107,7 @@ export default function Boards() {
         </div>
       </aside>
 
-      {/* ÁREA PRINCIPAL */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10">
           <h2 className="text-xl font-bold text-slate-800">Panel de Tableros</h2>
           <button onClick={handleLogout} className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
@@ -123,7 +116,6 @@ export default function Boards() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 lg:p-8">
-          
           <div className="flex justify-between items-center mb-8">
             <div>
               <h2 className="text-2xl font-bold text-slate-900">Tus Tableros Kanban</h2>
@@ -138,7 +130,6 @@ export default function Boards() {
             </button>
           </div>
 
-          {/* Grid de Tableros */}
           {loading ? (
             <p className="text-slate-500">Cargando tableros...</p>
           ) : boards.length === 0 ? (
@@ -154,7 +145,8 @@ export default function Boards() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {boards.map((board) => (
-                <div 
+                <Link 
+                  to={`/boards/${board.id}`}
                   key={board.id} 
                   className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-40 cursor-pointer group border-l-4 border-l-indigo-600"
                 >
@@ -166,15 +158,13 @@ export default function Boards() {
                     <span>{board.columns ? board.columns.length : 3} columnas</span>
                     <span className="text-indigo-600 group-hover:translate-x-1 transition-transform">Ver tablero →</span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
-
         </div>
       </main>
 
-      {/* MODAL PARA CREAR TABLERO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-6">
@@ -215,7 +205,6 @@ export default function Boards() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

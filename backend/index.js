@@ -115,7 +115,37 @@ app.get('/api/boards/:userId', async (req, res) => {
   }
 });
 
-// Crear un nuevo tablero (con sus columnas por defecto)
+// Obtener un tablero individual por su ID (para la vista de detalle)
+app.get('/api/boards/single/:boardId', async (req, res) => {
+  try {
+    const { boardId } = req.params;
+
+    const board = await prisma.board.findUnique({
+      where: { id: boardId },
+      include: {
+        columns: {
+          include: {
+            tasks: {
+              orderBy: { order: 'asc' }
+            }
+          },
+          orderBy: { order: 'asc' }
+        }
+      }
+    });
+
+    if (!board) {
+      return res.status(404).json({ error: 'Tablero no encontrado' });
+    }
+
+    return res.status(200).json(board);
+  } catch (error) {
+    console.error('Error al obtener el tablero individual:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Crear un nuevo tablero y sus columnas por defecto
 app.post('/api/boards', async (req, res) => {
   try {
     const { title, userId } = req.body;
@@ -124,27 +154,69 @@ app.post('/api/boards', async (req, res) => {
       return res.status(400).json({ error: 'El título y el usuario son obligatorios' });
     }
 
+    // 1. Creamos el tablero
     const newBoard = await prisma.board.create({
       data: {
         title,
         userId: parseInt(userId),
-        columns: {
-          create: [
-            { title: 'Por Hacer', order: 1 },
-            { title: 'En Progreso', order: 2 },
-            { title: 'Completado', order: 3 }
-          ]
-        }
-      },
-      include: {
-        columns: true
       }
     });
 
-    res.status(201).json({ message: '¡Tablero creado con éxito!', board: newBoard });
+    // 2. Creamos las columnas usando createMany
+    await prisma.column.createMany({
+      data: [
+        { title: 'Por Hacer', order: 1, boardId: newBoard.id },
+        { title: 'En Progreso', order: 2, boardId: newBoard.id },
+        { title: 'Completado', order: 3, boardId: newBoard.id }
+      ]
+    });
+
+    // 3. Obtenemos el tablero completo con columnas y tareas
+    const completeBoard = await prisma.board.findUnique({
+      where: { id: newBoard.id },
+      include: {
+        columns: {
+          include: { tasks: true },
+          orderBy: { order: 'asc' }
+        }
+      }
+    });
+
+    res.status(201).json({ message: '¡Tablero creado con éxito!', board: completeBoard });
 
   } catch (error) {
     console.error('Error al crear tablero:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ==========================================
+// --- 4. RUTAS DE TAREAS ---
+// ==========================================
+
+app.post('/api/tasks', async (req, res) => {
+  try {
+    const { content, columnId } = req.body;
+
+    if (!content || !columnId) {
+      return res.status(400).json({ error: 'El contenido y la columna son obligatorios' });
+    }
+
+    const taskCount = await prisma.task.count({
+      where: { columnId: parseInt(columnId) }
+    });
+
+    const newTask = await prisma.task.create({
+      data: {
+        content,
+        columnId: parseInt(columnId),
+        order: taskCount + 1
+      }
+    });
+
+    res.status(201).json({ message: '¡Tarea creada con éxito!', task: newTask });
+  } catch (error) {
+    console.error('Error al crear tarea:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

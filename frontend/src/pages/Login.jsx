@@ -23,13 +23,14 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
-  // Guardamos el usuario en el almacenamiento local del navegador
-  localStorage.setItem('user', JSON.stringify(data.user));
+        // Si las credenciales son correctas
+        localStorage.setItem('user', JSON.stringify(data.user));
         
-  // Redirigimos al usuario al Dashboard
-  navigate('/dashboard');
+        // Aquí redirigimos al usuario a la pantalla principal de la app
+        // navigate('/dashboard'); // Descomenta esta línea cuando crees tu pantalla de Dashboard
+        navigate('/dashboard');
         
-} else {
+      } else {
         // Si la contraseña o el correo son incorrectos
         alert('Error: ' + data.error);
       }
