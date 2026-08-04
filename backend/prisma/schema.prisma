@@ -17,4 +17,46 @@ model User {
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Relación: Un usuario puede tener muchos tableros
+  boards    Board[]  
+}
+
+// 1. EL TABLERO
+model Board {
+  id        String   @id @default(uuid())
+  title     String   // Ej: "Proyecto Alpha"
+  createdAt DateTime @default(now())
+  
+  // Relación: Quién es el dueño
+  userId    Int      // ADAPTADO: Ahora es Int para coincidir con el id de User
+  user      User     @relation(fields: [userId], references: [id])
+  
+  // Relación: Un tablero tiene muchas columnas
+  columns   Column[] 
+}
+
+// 2. LAS COLUMNAS (Por hacer, En progreso, etc.)
+model Column {
+  id        String   @id @default(uuid())
+  title     String   // Ej: "En Progreso"
+  order     Int      // Para saber en qué orden se muestran de izquierda a derecha
+  
+  // Relación: A qué tablero pertenece
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  
+  // Relación: Una columna tiene muchas tareas
+  tasks     Task[]   
+}
+
+// 3. LAS TAREAS (Las tarjetas que se mueven)
+model Task {
+  id        String   @id @default(uuid())
+  content   String   // Ej: "Crear diseño del login"
+  order     Int      // Para saber en qué orden están de arriba a abajo
+  
+  // Relación: En qué columna está actualmente
+  columnId  String
+  column    Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
 }
