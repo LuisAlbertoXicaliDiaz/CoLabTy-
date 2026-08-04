@@ -97,18 +97,25 @@ app.post('/api/login', async (req, res) => {
 // --- 3. RUTAS DE TABLEROS KANBAN ---
 // ==========================================
 
-// Obtener todos los tableros de un usuario específico
+// Obtener todos los tableros de un usuario (Propios + en los que ya fue ACEPTADO)
 app.get('/api/boards/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    const parsedUserId = parseInt(userId);
 
     const boards = await prisma.board.findMany({
-      where: { userId: parseInt(userId) },
+      where: {
+        OR: [
+          { userId: parsedUserId },
+          { members: { some: { userId: parsedUserId, status: 'accepted' } } }
+        ]
+      },
       include: {
         columns: {
           include: { tasks: true },
           orderBy: { order: 'asc' }
-        }
+        },
+        user: { select: { name: true } }
       }
     });
 
@@ -158,7 +165,6 @@ app.post('/api/boards', async (req, res) => {
       return res.status(400).json({ error: 'El título y el usuario son obligatorios' });
     }
 
-    // 1. Creamos el tablero
     const newBoard = await prisma.board.create({
       data: {
         title,
@@ -166,7 +172,6 @@ app.post('/api/boards', async (req, res) => {
       }
     });
 
-    // 2. Creamos las columnas usando createMany
     await prisma.column.createMany({
       data: [
         { title: 'Por Hacer', order: 1, boardId: newBoard.id },
@@ -175,7 +180,6 @@ app.post('/api/boards', async (req, res) => {
       ]
     });
 
-    // 3. Obtenemos el tablero completo con columnas y tareas
     const completeBoard = await prisma.board.findUnique({
       where: { id: newBoard.id },
       include: {
@@ -282,7 +286,111 @@ app.patch('/api/tasks/:taskId/move', async (req, res) => {
     return res.status(200).json({ message: '¡Tarea movida con éxito!', task: updatedTask });
   } catch (error) {
     console.error('Error al mover tarea:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ==========================================
+// --- 8. RUTAS DE INVITACIONES Y NOTIFICACIONES ---
+// ==========================================
+
+// 8.1 Invitar usuario a un tablero
+app.post('/api/boards/:boardId/invite', async (req, res) => {
+  try {
+    const { boardId } = req.params;
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'El correo electrónico es obligatorio' });
+    }
+
+    const userToInvite = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (!userToInvite) {
+      return res.status(404).json({ error: 'El usuario con ese correo no está registrado en CoLabTy' });
+    }
+
+    const existingMembership = await prisma.userBoard.findUnique({
+      where: {
+        userId_boardId: {
+          userId: userToInvite.id,
+          boardId: boardId
+        }
+      }
+    });
+
+    if (existingMembership) {
+      return res.status(400).json({ error: 'Este usuario ya es miembro de este tablero' });
+    }
+
+    await prisma.userBoard.create({
+      data: {
+        userId: userToInvite.id,
+        boardId: boardId,
+        status: 'pending' // Estado por defecto
+      }
+    });
+
+    return res.status(200).json({ message: `¡${userToInvite.name} ha sido invitado con éxito!` });
+  } catch (error) {
+    console.error('Error al invitar usuario:', error);
     return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// 8.2 Obtener notificaciones pendientes de un usuario
+app.get('/api/notifications/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const invites = await prisma.userBoard.findMany({
+      where: {
+        userId: parseInt(userId),
+        status: 'pending'
+      },
+      include: {
+        board: {
+          include: {
+            user: { select: { name: true } } // Propietario del tablero
+          }
+        }
+      }
+    });
+
+    res.status(200).json(invites);
+  } catch (error) {
+    console.error('Error al obtener notificaciones:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// 8.3 Aceptar o Rechazar una invitación
+app.patch('/api/notifications/:inviteId', async (req, res) => {
+  try {
+    const { inviteId } = req.params;
+    const { action } = req.body; // "accept" o "reject"
+
+    if (!action || !['accept', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'La acción debe ser "accept" o "reject"' });
+    }
+
+    if (action === 'accept') {
+      await prisma.userBoard.update({
+        where: { id: parseInt(inviteId) },
+        data: { status: 'accepted' }
+      });
+      return res.status(200).json({ message: '¡Invitación aceptada!' });
+    } else {
+      await prisma.userBoard.delete({
+        where: { id: parseInt(inviteId) }
+      });
+      return res.status(200).json({ message: 'Invitación rechazada' });
+    }
+  } catch (error) {
+    console.error('Error al procesar invitación:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -293,7 +401,7 @@ app.patch('/api/tasks/:taskId/move', async (req, res) => {
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "*", // En producción, restringe a tu dominio
+    origin: "*",
     methods: ["GET", "POST"]
   }
 });
@@ -301,9 +409,7 @@ const io = new Server(httpServer, {
 io.on('connection', (socket) => {
   console.log('Usuario conectado al chat:', socket.id);
 
-  // Escuchar mensajes enviados por el cliente
   socket.on('send_message', (data) => {
-    // Reenvía el mensaje a todos los clientes conectados (broadcast)
     io.emit('receive_message', data);
   });
 

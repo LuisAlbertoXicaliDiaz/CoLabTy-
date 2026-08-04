@@ -9,12 +9,17 @@ export default function Boards() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Estados para las notificaciones (campanita)
+  const [notifications, setNotifications] = useState([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
       fetchBoards(parsedUser.id);
+      fetchNotifications(parsedUser.id);
     } else {
       navigate('/login');
     }
@@ -31,6 +36,40 @@ export default function Boards() {
       console.error('Error al obtener tableros:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchNotifications = async (userId) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/notifications/${userId}`);
+      const data = await response.json();
+      if (response.ok) {
+        setNotifications(data);
+      }
+    } catch (error) {
+      console.error('Error al obtener notificaciones:', error);
+    }
+  };
+
+  const handleRespondNotification = async (inviteId, action) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/notifications/${inviteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert(data.message);
+        // Recargamos tableros y notificaciones
+        fetchBoards(user.id);
+        fetchNotifications(user.id);
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error al responder invitación:', error);
     }
   };
 
@@ -51,9 +90,9 @@ export default function Boards() {
       const data = await response.json();
 
       if (response.ok) {
-        setBoards([...boards, data.board]);
         setNewBoardTitle('');
         setIsModalOpen(false);
+        fetchBoards(user.id);
       } else {
         alert('Error: ' + data.error);
       }
@@ -63,9 +102,8 @@ export default function Boards() {
     }
   };
 
-  // Función para eliminar un tablero completo
   const handleDeleteBoard = async (e, boardId) => {
-    e.stopPropagation(); // Evita que se abra el tablero al hacer clic en la "X"
+    e.stopPropagation();
     if (!window.confirm('¿Estás seguro de que deseas eliminar este tablero y todas sus tareas?')) return;
 
     try {
@@ -104,7 +142,7 @@ export default function Boards() {
           </Link>
           
           <Link to="/boards" className="flex items-center gap-3 px-3 py-2.5 bg-indigo-600 rounded-lg text-white font-medium transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 002 2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
             Mis Tableros
           </Link>
           
@@ -127,12 +165,69 @@ export default function Boards() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10">
           <h2 className="text-xl font-bold text-slate-800">Panel de Tableros</h2>
-          <button onClick={handleLogout} className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
-            Cerrar Sesión
-          </button>
+          
+          <div className="flex items-center gap-4">
+            {/* Campanita de Notificaciones */}
+            <div className="relative">
+              <button 
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className="relative p-2 text-slate-600 hover:text-indigo-600 transition-colors cursor-pointer rounded-xl hover:bg-slate-100"
+                title="Notificaciones"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                {notifications.length > 0 && (
+                  <span className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    {notifications.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Menú Desplegable de Notificaciones */}
+              {isNotificationsOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-4 space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                    <h3 className="font-bold text-slate-800 text-sm">Invitaciones Pendientes</h3>
+                    <span className="bg-indigo-100 text-indigo-600 font-bold text-xs px-2 py-0.5 rounded-full">{notifications.length}</span>
+                  </div>
+
+                  {notifications.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">No tienes invitaciones nuevas.</p>
+                  ) : (
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                      {notifications.map((invite) => (
+                        <div key={invite.id} className="bg-slate-50 border border-slate-100 p-3 rounded-xl space-y-2">
+                          <p className="text-xs text-slate-700">
+                            <span className="font-bold text-indigo-600">{invite.board.user.name}</span> te invitó a colaborar en el tablero <span className="font-bold">"{invite.board.title}"</span>.
+                          </p>
+                          <div className="flex gap-2 justify-end">
+                            <button 
+                              onClick={() => handleRespondNotification(invite.id, 'reject')}
+                              className="px-3 py-1 bg-slate-200 hover:bg-red-100 hover:text-red-600 text-slate-600 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                            >
+                              Rechazar
+                            </button>
+                            <button 
+                              onClick={() => handleRespondNotification(invite.id, 'accept')}
+                              className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-sm"
+                            >
+                              Aceptar
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button onClick={handleLogout} className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors cursor-pointer">
+              Cerrar Sesión
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 lg:p-8">
@@ -154,7 +249,7 @@ export default function Boards() {
             <p className="text-slate-500">Cargando tableros...</p>
           ) : boards.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-              <p className="text-slate-500 font-medium mb-4">Aún no tienes ningún tablero creado.</p>
+              <p className="text-slate-500 font-medium mb-4">Aún no tienes ningún tablero creado o compartido.</p>
               <button 
                 onClick={() => setIsModalOpen(true)}
                 className="text-indigo-600 font-bold hover:underline cursor-pointer"
@@ -171,14 +266,21 @@ export default function Boards() {
                   className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-40 cursor-pointer group border-l-4 border-l-indigo-600 relative"
                 >
                   <div className="flex justify-between items-start">
-                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors pr-6">{board.title}</h3>
-                    <button 
-                      onClick={(e) => handleDeleteBoard(e, board.id)}
-                      className="text-slate-400 hover:text-red-600 font-bold p-1 rounded-lg hover:bg-slate-100 transition-colors z-10 cursor-pointer"
-                      title="Eliminar tablero"
-                    >
-                      ✕
-                    </button>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors pr-6">{board.title}</h3>
+                      {board.user && (
+                        <p className="text-xs text-indigo-500 font-semibold mt-0.5">Creador: {board.user.name}</p>
+                      )}
+                    </div>
+                    {board.userId === user.id && (
+                      <button 
+                        onClick={(e) => handleDeleteBoard(e, board.id)}
+                        className="text-slate-400 hover:text-red-600 font-bold p-1 rounded-lg hover:bg-slate-100 transition-colors z-10 cursor-pointer"
+                        title="Eliminar tablero"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                   <div>
                     <p className="text-xs text-slate-400 mt-1">Creado el {new Date(board.createdAt).toLocaleDateString()}</p>
@@ -210,7 +312,7 @@ export default function Boards() {
                   value={newBoardTitle}
                   onChange={(e) => setNewBoardTitle(e.target.value)}
                   placeholder="Ej. TalentHub México"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none font-medium"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm"
                   required
                 />
               </div>
@@ -219,13 +321,13 @@ export default function Boards() {
                 <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors cursor-pointer text-sm"
                 >
                   Cancelar
                 </button>
                 <button 
                   type="submit"
-                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-sm cursor-pointer text-sm"
                 >
                   Crear Tablero
                 </button>

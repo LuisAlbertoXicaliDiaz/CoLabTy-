@@ -114,6 +114,10 @@ export default function BoardDetail() {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [activeColumnId, setActiveColumnId] = useState(null);
 
+  // Estados para el Modal de Invitación
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -181,6 +185,33 @@ export default function BoardDetail() {
       }
     } catch (error) {
       console.error('Error al crear tarea:', error);
+    }
+  };
+
+  // Función para enviar la invitación por correo
+  const handleInviteMember = async (e) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/boards/${id}/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inviteEmail })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(data.message);
+        setInviteEmail('');
+        setIsInviteModalOpen(false);
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error al invitar miembro:', error);
+      alert('Error de conexión con el servidor.');
     }
   };
 
@@ -253,12 +284,15 @@ export default function BoardDetail() {
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2.5 text-indigo-200 hover:bg-indigo-900/50 hover:text-white rounded-lg font-medium transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
             Inicio
           </Link>
-          <Link to="/boards" className="flex items-center gap-3 px-3 py-2.5 text-indigo-200 hover:bg-indigo-900/50 hover:text-white rounded-lg font-medium transition-colors">
+          <Link to="/boards" className="flex items-center gap-3 px-3 py-2.5 bg-indigo-600 rounded-lg text-white font-medium transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
             Mis Tableros
           </Link>
           <Link to="/chat" className="flex items-center gap-3 px-3 py-2.5 text-indigo-200 hover:bg-indigo-900/50 hover:text-white rounded-lg font-medium transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
             Chat de Equipo
           </Link>
         </nav>
@@ -268,12 +302,23 @@ export default function BoardDetail() {
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shrink-0">
           <div className="flex items-center gap-4">
             <Link to="/boards" className="text-sm font-bold text-indigo-600 hover:underline">
-              ← Volver a Tableros
+              ← Volver
             </Link>
             <span className="text-slate-300">|</span>
             <h2 className="text-xl font-bold text-slate-800">{board?.title}</h2>
           </div>
-          <span className="text-sm text-slate-500 font-medium">{user.name}</span>
+
+          <div className="flex items-center gap-4">
+            {/* Botón para abrir el modal de invitar */}
+            <button 
+              onClick={() => setIsInviteModalOpen(true)}
+              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold px-3.5 py-2 rounded-xl text-sm transition-colors flex items-center gap-2 cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+              Invitar Miembro
+            </button>
+            <span className="text-sm text-slate-500 font-medium">{user.name}</span>
+          </div>
         </header>
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -293,6 +338,49 @@ export default function BoardDetail() {
           </div>
         </DndContext>
       </main>
+
+      {/* Modal para Invitar Colaborador */}
+      {isInviteModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold text-slate-900">Invitar compañero al tablero</h3>
+              <button onClick={() => setIsInviteModalOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold text-xl cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleInviteMember} className="space-y-4">
+              <div>
+                <label className="text-sm font-bold text-slate-700 block mb-2">Correo electrónico registrado</label>
+                <input 
+                  type="email" 
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="ejemplo@correo.com"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm"
+                  required
+                />
+                <p className="text-xs text-slate-400 mt-1">El usuario debe estar registrado previamente en CoLabTy.</p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => setIsInviteModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors cursor-pointer text-sm"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-sm cursor-pointer text-sm"
+                >
+                  Enviar Invitación
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

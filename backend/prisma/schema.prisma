@@ -16,7 +16,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  boards    Board[]  
+  boards      Board[]     // Tableros creados por el usuario
+  userBoards  UserBoard[] // Tableros donde ha sido invitado
 }
 
 model Board {
@@ -24,10 +25,11 @@ model Board {
   title     String   
   createdAt DateTime @default(now())
   
-  userId    Int      
+  userId    Int      // Creador original del tablero
   user      User     @relation(fields: [userId], references: [id])
   
   columns   Column[] 
+  members   UserBoard[] // Miembros invitados al tablero
 }
 
 model Column {
@@ -48,4 +50,17 @@ model Task {
   
   columnId  String
   column    Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
+}
+
+// Tabla intermedia para la relación de muchos a muchos (Colaboradores)
+model UserBoard {
+  id      Int    @id @default(autoincrement())
+  userId  Int
+  boardId String
+  status  String @default("pending") // "pending" o "accepted"
+  
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, boardId])
 }
