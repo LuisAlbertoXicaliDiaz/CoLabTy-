@@ -204,7 +204,7 @@ app.post('/api/boards', async (req, res) => {
 
 app.post('/api/tasks', async (req, res) => {
   try {
-    const { content, columnId } = req.body;
+    const { content, columnId, priority, dueDate } = req.body;
 
     if (!content || !columnId) {
       return res.status(400).json({ error: 'El contenido y la columna son obligatorios' });
@@ -218,7 +218,9 @@ app.post('/api/tasks', async (req, res) => {
       data: {
         content,
         columnId: columnId,
-        order: taskCount + 1
+        order: taskCount + 1,
+        priority: priority || 'media',
+        dueDate: dueDate || null
       }
     });
 
@@ -395,7 +397,7 @@ app.patch('/api/notifications/:inviteId', async (req, res) => {
 });
 
 // ==========================================
-// --- CONFIGURACIÓN DE SOCKET.IO (CHAT) ---
+// --- CONFIGURACIÓN DE SOCKET.IO (CHAT POR TABLERO) ---
 // ==========================================
 
 const httpServer = createServer(app);
@@ -409,8 +411,16 @@ const io = new Server(httpServer, {
 io.on('connection', (socket) => {
   console.log('Usuario conectado al chat:', socket.id);
 
+  // El cliente se une a una sala específica de un tablero
+  socket.on('join_board', (boardId) => {
+    socket.join(boardId);
+    console.log(`Usuario ${socket.id} se unió a la sala del tablero: ${boardId}`);
+  });
+
+  // Escuchar mensajes y enviarlos únicamente a los usuarios de ESE tablero
   socket.on('send_message', (data) => {
-    io.emit('receive_message', data);
+    // data debe incluir { boardId, message, user }
+    io.to(data.boardId).emit('receive_message', data);
   });
 
   socket.on('disconnect', () => {

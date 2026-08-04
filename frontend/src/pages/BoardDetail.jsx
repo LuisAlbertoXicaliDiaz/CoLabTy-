@@ -15,40 +15,62 @@ function SortableTask({ task, onDelete, theme }) {
 
   const isLight = theme === 'light';
 
+  // Configuración de colores para las prioridades
+  const priorityColors = {
+    alta: 'bg-red-500/20 text-red-400 border-red-500/30',
+    media: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    baja: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+  };
+
   return (
     <div 
       ref={setNodeRef} 
       style={style} 
       {...attributes} 
       {...listeners}
-      className={`p-3.5 rounded-xl border text-sm font-medium flex justify-between items-start group cursor-grab active:cursor-grabbing transition-all select-none ${
+      className={`p-4 rounded-2xl border text-sm flex flex-col gap-3 group cursor-grab active:cursor-grabbing transition-all select-none shadow-sm ${
         isLight 
-          ? 'bg-white border-slate-200 text-slate-800 hover:border-indigo-300 shadow-sm' 
+          ? 'bg-white border-slate-200 text-slate-800 hover:border-indigo-300' 
           : 'bg-slate-900/90 border-slate-700/60 text-slate-200 hover:border-indigo-500/50'
       }`}
     >
-      <span className="flex-1 mr-2">{task.content}</span>
-      <button 
-        type="button"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={() => onDelete(task.id)}
-        className="text-slate-400 hover:text-red-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-        title="Eliminar tarea"
-      >
-        ✕
-      </button>
+      <div className="flex justify-between items-start gap-2">
+        <span className="font-medium leading-relaxed flex-1">{task.content}</span>
+        <button 
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onDelete(task.id)}
+          className="text-slate-400 hover:text-red-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-1"
+          title="Eliminar tarea"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Aquí es donde se muestran la prioridad y la fecha límite */}
+      <div className="flex items-center justify-between pt-2 border-t border-slate-700/20 text-xs">
+        <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase border ${priorityColors[task.priority] || priorityColors.media}`}>
+          {task.priority || 'media'}
+        </span>
+
+        {task.dueDate && (
+          <span className="text-slate-400 font-semibold flex items-center gap-1">
+            📅 {task.dueDate}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
 
-function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumnId, newTaskContent, setNewTaskContent, handleCreateTask, theme }) {
+function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumnId, newTaskContent, setNewTaskContent, taskPriority, setTaskPriority, taskDueDate, setTaskDueDate, handleCreateTask, theme }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const isLight = theme === 'light';
 
   return (
     <div 
       ref={setNodeRef} 
-      className={`w-80 shrink-0 rounded-2xl p-4 flex flex-col max-h-full border transition-colors shadow-sm ${
+      className={`w-80 shrink-0 rounded-3xl p-5 flex flex-col max-h-full border transition-colors shadow-lg ${
         isLight 
           ? `bg-slate-100 ${isOver ? 'border-indigo-400 bg-indigo-50/40' : 'border-slate-200'}` 
           : `bg-slate-900/40 border-slate-800 ${isOver ? 'border-indigo-500 bg-indigo-950/20' : ''}`
@@ -56,12 +78,12 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
     >
       <div className="flex justify-between items-center mb-4 px-1">
         <h3 className={`font-bold text-sm tracking-wide uppercase ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>{column.title}</h3>
-        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isLight ? 'bg-slate-200 text-slate-600' : 'bg-slate-800 text-slate-400'}`}>
+        <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${isLight ? 'bg-slate-200 text-slate-600' : 'bg-slate-800 text-slate-400'}`}>
           {column.tasks?.length || 0}
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1 min-h-[150px]">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 min-h-[180px]">
         <SortableContext items={column.tasks?.map(t => t.id) || []} strategy={verticalListSortingStrategy}>
           {column.tasks?.map((task) => (
             <SortableTask key={task.id} task={task} onDelete={onDeleteTask} theme={theme} />
@@ -71,13 +93,15 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
 
       <div className="mt-4 pt-2">
         {activeColumnId === column.id ? (
-          <form onSubmit={(e) => handleCreateTask(e, column.id)} className="space-y-2">
+          <form onSubmit={(e) => handleCreateTask(e, column.id)} className="space-y-3">
             <textarea 
               rows="2"
+              id="newTaskContent"
+              name="newTaskContent"
               value={newTaskContent}
               onChange={(e) => setNewTaskContent(e.target.value)}
-              placeholder="Escribe el contenido de la tarea..."
-              className={`w-full p-2.5 border rounded-xl text-sm outline-none ${
+              placeholder="¿Qué tarea deseas agregar?"
+              className={`w-full p-3 border rounded-xl text-sm outline-none font-medium ${
                 isLight 
                   ? 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-600' 
                   : 'bg-slate-950 border-slate-800 text-white focus:ring-2 focus:ring-indigo-600'
@@ -85,7 +109,31 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
               required
               autoFocus
             />
-            <div className="flex justify-end gap-2">
+
+            <div className="flex gap-2">
+              <select 
+                id="taskPriority"
+                name="taskPriority"
+                value={taskPriority}
+                onChange={(e) => setTaskPriority(e.target.value)}
+                className={`flex-1 p-2 border rounded-xl text-xs font-bold outline-none ${isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-950 border-slate-800 text-slate-300'}`}
+              >
+                <option value="baja">Baja</option>
+                <option value="media">Media</option>
+                <option value="alta">Alta</option>
+              </select>
+
+              <input 
+                type="date"
+                id="taskDueDate"
+                name="taskDueDate"
+                value={taskDueDate}
+                onChange={(e) => setTaskDueDate(e.target.value)}
+                className={`p-2 border rounded-xl text-xs font-semibold outline-none ${isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-950 border-slate-800 text-slate-300'}`}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
               <button 
                 type="button" 
                 onClick={() => setActiveColumnId(null)}
@@ -95,9 +143,9 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
               </button>
               <button 
                 type="submit"
-                className="px-3 py-1.5 text-xs bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 cursor-pointer shadow-sm"
+                className="px-4 py-1.5 text-xs bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-500 cursor-pointer shadow-md"
               >
-                Añadir
+                Guardar Tarea
               </button>
             </div>
           </form>
@@ -105,11 +153,11 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
           <button 
             type="button"
             onClick={() => setActiveColumnId(column.id)}
-            className={`w-full py-2 px-3 text-left text-sm font-semibold rounded-xl transition-colors cursor-pointer flex items-center gap-2 ${
-              isLight ? 'text-slate-500 hover:text-indigo-600 hover:bg-slate-200/60' : 'text-slate-400 hover:text-indigo-400 hover:bg-slate-800/60'
+            className={`w-full py-2.5 px-3 text-left text-sm font-semibold rounded-xl transition-colors cursor-pointer flex items-center gap-2 ${
+              isLight ? 'text-indigo-600 hover:bg-indigo-50' : 'text-indigo-400 hover:bg-slate-800/60'
             }`}
           >
-            <span>+ Añadir tarea</span>
+            <span>+ Añadir tarea avanzada</span>
           </button>
         )}
       </div>
