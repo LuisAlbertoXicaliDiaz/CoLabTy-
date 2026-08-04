@@ -1,64 +1,76 @@
-# TalentHub México 🚀
+<div align="center">
 
-Plataforma colaborativa y de gestión orientada a proyectos y tableros en tiempo real, diseñada con una interfaz moderna y optimizada.
+# 🚀 TalentHub México
+### *Plataforma colaborativa y de gestión de proyectos en tiempo real*
 
-## 🛠️ Tecnologías Utilizadas
+[![Node.js](https://img.shields.io/badge/Node.js-v18+-green.svg?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-Vite-blue.svg?style=for-the-badge&logo=react)](https://react.dev/)
+[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748.svg?style=for-the-badge&logo=prisma)](https://www.prisma.io/)
+[![Socket.io](https://img.shields.io/badge/Socket.io-Realtime-010101.svg?style=for-the-badge&logo=socket.io)](https://socket.io/)
 
-### Backend
-* **Node.js** & **Express**: Servidor principal y manejo de rutas API.
-* **Socket.io**: Comunicación en tiempo real para el chat y la colaboración en tableros.
-* **Prisma ORM**: Conexión y gestión de la base de datos relacional.
-
-### Frontend
-* **React** (con **Vite**): Interfaz de usuario rápida y dinámica.
-* **Socket.io-client**: Cliente para la sincronización del chat de los tableros en tiempo real.
+</div>
 
 ---
 
-## ⚙️ Guía de Instalación y Ejecución Local
+## 💡 Sobre el Proyecto
 
-Sigue estos pasos para clonar y echar a andar el proyecto en tu entorno local:
+**TalentHub México** es una aplicación web diseñada para potenciar la colaboración en equipo. Permite la gestión de tableros de trabajo y cuenta con un **sistema de chat integrado en tiempo real** por cada tablero mediante WebSockets, facilitando la comunicación fluida entre compañeros y equipos de desarrollo.
 
-### 1. Clonar el repositorio y configurar el entorno
-Abre tu terminal y clona el proyecto, luego entra a la carpeta del backend:
+---
+
+## 🛠️ Stack Tecnológico
+
+| Componente | Tecnología | Propósito |
+| :--- | :--- | :--- |
+| **Frontend** | React + Vite | Interfaz de usuario dinámica, moderna y optimizada para dispositivos móviles y escritorio. |
+| **Backend** | Node.js & Express | Servidor API RESTful para la lógica de negocio y autenticación. |
+| **Tiempo Real** | Socket.io | Sincronización instantánea de mensajes y actualizaciones en los tableros. |
+| **Base de Datos** | PostgreSQL & Prisma ORM | Modelado relacional seguro y consultas eficientes de usuarios, tableros y mensajes. |
+
+---
+
+## ⚙️ Guía de Instalación y Configuración Local
+
+Sigue estos sencillos pasos para echar a andar el proyecto en tu entorno de desarrollo local:
+
+### 1. Clonar el repositorio y preparar el Backend
+Abre tu terminal, clonar el proyecto y entra a la carpeta del servidor:
 ```bash
 cd backend
-2. Configurar las Variables de Entorno (Backend)
-Crea un archivo llamado .env dentro de la carpeta backend y añade la URL de conexión a tu base de datos:
+2. Configurar las Variables de Entorno
+Crea un archivo llamado exactamente .env dentro de la carpeta backend y define tu conexión a la base de datos:
 
 Fragmento de código
-DATABASE_URL="tu_cadena_de_conexion_de_postgresql_o_base_de_datos"
+DATABASE_URL="tu_cadena_de_conexion_de_postgresql"
 PORT=4000
-3. Instalar Dependencias y Prisma
-En la carpeta backend:
+3. Instalar Dependencias y Generar Prisma
+Instalar dependencias del Backend y generar el cliente:
 
 Bash
 npm install
 npx prisma generate
-En la carpeta frontend:
+Instalar dependencias del Frontend:
 
 Bash
 cd ../frontend
 npm install
 🚀 Ejecución del Proyecto
-Para correr la aplicación completa, necesitarás dos terminales abiertas simultáneamente:
+Para correr la plataforma al 100%, necesitarás dos terminales abiertas simultáneamente:
 
-Terminal 1 (Backend y Servidor WebSockets):
+Terminal 1 — Backend & WebSockets
 
 Bash
 cd backend
 node index.js
-Terminal 2 (Frontend / Interfaz):
+Terminal 2 — Frontend (Interfaz)
 
 Bash
 cd frontend
 npm run dev
-¡Listo! Abre el enlace que te proporciona Vite en tu navegador (por lo general http://localhost:5173) y podrás utilizar la plataforma al 100%.
+¡Listo! Abre el enlace proporcionado por Vite en tu navegador (usualmente http://localhost:5173) y disfruta de la aplicación.
 
-📊 Administración de la Base de Datos
-Puedes visualizar y editar los registros de tus tablas de forma gráfica ejecutando en la carpeta del backend:
+📊 Administración Visual de la Base de Datos
+Si necesitas inspeccionar, modificar o agregar datos directamente en tus tablas de forma gráfica, puedes utilizar Prisma Studio ejecutando el siguiente comando en la carpeta del backend:
 
 Bash
 npx prisma studio
-
-Guarda los cambios en tu archivo `README.md`, hazle un commit y estará listo para documenta
