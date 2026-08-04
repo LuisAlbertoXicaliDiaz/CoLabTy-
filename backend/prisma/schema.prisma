@@ -47,6 +47,8 @@ model Task {
   id        String   @id @default(uuid())
   content   String   
   order     Int      
+  priority  String   @default("media") // "baja", "media", "alta"
+  dueDate   String?  // Fecha límite opcional (formato YYYY-MM-DD)
   
   columnId  String
   column    Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)

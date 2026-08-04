@@ -1,47 +1,44 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function Register() {
-  // 1. Estados para los datos del registro
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const navigate = useNavigate();
 
-  // 2. Función que maneja el envío (¡Ahora conectada al backend!)
+  // Estado para el selector de temas
+  const [theme, setTheme] = useState(localStorage.getItem('colabty_theme') || 'dark');
+
+  const changeTheme = (newTheme) => {
+    setTheme(newTheme);
+    localStorage.setItem('colabty_theme', newTheme);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validación básica en el frontend
     if (password !== confirmPassword) {
       alert("Las contraseñas no coinciden");
       return;
     }
 
     try {
-      // Hacemos la petición a nuestro servidor local
       const response = await fetch('http://localhost:4000/api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Enviamos los estados exactos de tu componente
         body: JSON.stringify({ name, email, password }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Si todo sale bien
         alert('¡' + data.message + '!');
-        
-        // Limpiamos los campos después del registro exitoso
-        setName('');
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
+        navigate('/login');
       } else {
-        // Si hay un error (como un correo repetido)
         alert('Error: ' + data.error);
       }
 
@@ -51,13 +48,67 @@ export default function Register() {
     }
   };
 
+  // Mapeo de colores dinámicos manteniendo tu diseño original
+  const themesConfig = {
+    dark: {
+      bg: 'bg-slate-950 text-slate-100',
+      leftBg: 'bg-gradient-to-br from-indigo-950 via-indigo-900 to-violet-800 text-white',
+      rightBg: 'bg-slate-950 text-slate-100',
+      inputBg: 'bg-slate-900 border-slate-800 text-white placeholder:text-slate-500',
+      textColor: 'text-white',
+      mutedText: 'text-slate-400',
+      brandText: 'text-white',
+      btnBg: 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30'
+    },
+    light: {
+      bg: 'bg-white text-slate-900',
+      leftBg: 'bg-gradient-to-br from-indigo-950 via-indigo-900 to-violet-800 text-white',
+      rightBg: 'bg-white text-slate-900',
+      inputBg: 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400',
+      textColor: 'text-slate-900',
+      mutedText: 'text-slate-500',
+      brandText: 'text-indigo-950',
+      btnBg: 'bg-indigo-950 hover:bg-indigo-900 text-white shadow-[0_4px_14px_0_rgba(49,46,129,0.39)]'
+    },
+    emerald: {
+      bg: 'bg-zinc-950 text-emerald-50',
+      leftBg: 'bg-gradient-to-br from-emerald-950 via-zinc-900 to-teal-900 text-emerald-50',
+      rightBg: 'bg-zinc-950 text-emerald-50',
+      inputBg: 'bg-zinc-900 border-emerald-950 text-emerald-100 placeholder:text-zinc-500',
+      textColor: 'text-emerald-100',
+      mutedText: 'text-zinc-400',
+      brandText: 'text-emerald-400',
+      btnBg: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30'
+    },
+    violet: {
+      bg: 'bg-purple-950/30 text-purple-100',
+      leftBg: 'bg-gradient-to-br from-purple-950 via-indigo-950 to-purple-900 text-white',
+      rightBg: 'bg-purple-950/20 text-purple-100',
+      inputBg: 'bg-purple-950/40 border-purple-800/40 text-white placeholder:text-purple-300/50',
+      textColor: 'text-white',
+      mutedText: 'text-purple-300/70',
+      brandText: 'text-purple-300',
+      btnBg: 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30'
+    }
+  };
+
+  const currentTheme = themesConfig[theme] || themesConfig.dark;
+
   return (
-    <div className="min-h-screen flex w-full bg-white font-sans">
+    <div className={`min-h-screen flex w-full font-sans transition-colors duration-300 ${currentTheme.bg}`}>
       
+      {/* Selector de Temas Flotante */}
+      <div className="absolute top-6 right-6 flex items-center bg-slate-900/20 border border-slate-700/40 p-1 rounded-xl gap-1 z-50">
+        <button onClick={() => changeTheme('dark')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'dark' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>🌙</button>
+        <button onClick={() => changeTheme('light')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'light' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>☀️</button>
+        <button onClick={() => changeTheme('emerald')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'emerald' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}>🌿</button>
+        <button onClick={() => changeTheme('violet')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'violet' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>🍇</button>
+      </div>
+
       {/* Sección Izquierda */}
-      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-indigo-950 via-indigo-900 to-violet-800 p-12 relative overflow-hidden items-end">
-        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute top-[20%] right-[-10%] w-72 h-72 bg-violet-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+      <div className={`hidden lg:flex w-1/2 ${currentTheme.leftBg} p-12 relative overflow-hidden items-end`}>
+        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+        <div className="absolute top-[20%] right-[-10%] w-72 h-72 bg-violet-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
 
         <div className="relative z-10 w-full max-w-xl text-white">
           <h1 className="text-5xl font-black tracking-tighter mb-6">CoLabTy.</h1>
@@ -79,23 +130,23 @@ export default function Register() {
       </div>
 
       {/* Sección Derecha: Formulario de Registro */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 h-screen overflow-y-auto">
+      <div className={`w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 h-screen overflow-y-auto ${currentTheme.rightBg}`}>
         <div className="w-full max-w-md space-y-8 my-auto py-8">
           
           <div className="lg:hidden text-center mb-4">
-            <h1 className="text-4xl font-black text-indigo-950 tracking-tighter">CoLabTy.</h1>
+            <h1 className={`text-4xl font-black tracking-tighter ${currentTheme.brandText}`}>CoLabTy.</h1>
           </div>
 
           <div>
-            <h2 className="text-3xl font-bold text-slate-900">Crea tu cuenta</h2>
-            <p className="text-slate-500 mt-2">Únete a CoLabTy y organiza a tu equipo.</p>
+            <h2 className={`text-3xl font-bold ${currentTheme.textColor}`}>Crea tu cuenta</h2>
+            <p className={`mt-2 ${currentTheme.mutedText}`}>Únete a CoLabTy y organiza a tu equipo.</p>
           </div>
 
-          {/* 3. Conectamos el formulario */}
+          {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-5">
             
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-900 tracking-wide" htmlFor="name">
+              <label className={`text-sm font-bold tracking-wide ${currentTheme.textColor}`} htmlFor="name">
                 Nombre Completo
               </label>
               <input 
@@ -103,14 +154,14 @@ export default function Register() {
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all font-medium ${currentTheme.inputBg}`}
                 placeholder="Ej. Luis Díaz"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-900 tracking-wide" htmlFor="email">
+              <label className={`text-sm font-bold tracking-wide ${currentTheme.textColor}`} htmlFor="email">
                 Correo Electrónico
               </label>
               <input 
@@ -118,14 +169,14 @@ export default function Register() {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all font-medium ${currentTheme.inputBg}`}
                 placeholder="ejemplo@empresa.com"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-900 tracking-wide" htmlFor="password">
+              <label className={`text-sm font-bold tracking-wide ${currentTheme.textColor}`} htmlFor="password">
                 Contraseña
               </label>
               <input 
@@ -133,7 +184,7 @@ export default function Register() {
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all font-medium ${currentTheme.inputBg}`}
                 placeholder="••••••••"
                 required
               />
@@ -142,14 +193,14 @@ export default function Register() {
                   <div className="h-1.5 w-1/4 rounded-full bg-red-400"></div>
                   <div className="h-1.5 w-1/4 rounded-full bg-amber-400"></div>
                   <div className="h-1.5 w-1/4 rounded-full bg-green-500"></div>
-                  <div className="h-1.5 w-1/4 rounded-full bg-slate-200"></div>
+                  <div className="h-1.5 w-1/4 rounded-full bg-slate-700"></div>
                 </div>
-                <p className="text-xs text-slate-500 mt-1.5 font-medium text-right">Fortaleza: Buena</p>
+                <p className={`text-xs mt-1.5 font-medium text-right ${currentTheme.mutedText}`}>Fortaleza: Buena</p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-900 tracking-wide" htmlFor="confirmPassword">
+              <label className={`text-sm font-bold tracking-wide ${currentTheme.textColor}`} htmlFor="confirmPassword">
                 Confirmar Contraseña
               </label>
               <input 
@@ -157,24 +208,23 @@ export default function Register() {
                 id="confirmPassword"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all font-medium ${currentTheme.inputBg}`}
                 placeholder="••••••••"
                 required
               />
             </div>
 
-            {/* 4. Cambiamos a type="submit" */}
             <button 
               type="submit" 
-              className="w-full bg-indigo-950 hover:bg-indigo-900 text-white font-bold text-lg py-3.5 px-4 rounded-xl transition-all shadow-[0_4px_14px_0_rgba(49,46,129,0.39)] hover:shadow-[0_6px_20px_rgba(49,46,129,0.23)] hover:-translate-y-0.5 active:translate-y-0 mt-6"
+              className={`w-full font-bold text-lg py-3.5 px-4 rounded-xl transition-all hover:-translate-y-0.5 active:translate-y-0 mt-6 cursor-pointer ${currentTheme.btnBg}`}
             >
               Crear Cuenta
             </button>
           </form>
 
-          <div className="text-center pt-4 text-slate-600 font-medium pb-4">
+          <div className={`text-center pt-4 font-medium pb-4 ${currentTheme.mutedText}`}>
             ¿Ya tienes una cuenta?{' '}
-            <Link to="/login" className="text-indigo-600 font-bold hover:text-indigo-800 transition-colors">
+            <Link to="/login" className="text-indigo-500 font-bold hover:text-indigo-400 transition-colors">
               Inicia Sesión
             </Link>
           </div>
@@ -184,4 +234,4 @@ export default function Register() {
       
     </div>
   );
-} 
+}

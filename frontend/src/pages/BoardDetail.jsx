@@ -4,8 +4,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// Componente individual para cada Tarjeta de Tarea (Draggable)
-function SortableTask({ task, onDelete }) {
+function SortableTask({ task, onDelete, theme }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
 
   const style = {
@@ -14,20 +13,26 @@ function SortableTask({ task, onDelete }) {
     opacity: isDragging ? 0.4 : 1,
   };
 
+  const isLight = theme === 'light';
+
   return (
     <div 
       ref={setNodeRef} 
       style={style} 
       {...attributes} 
       {...listeners}
-      className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm text-slate-800 text-sm font-medium flex justify-between items-start group cursor-grab active:cursor-grabbing hover:border-indigo-300 transition-all select-none"
+      className={`p-3.5 rounded-xl border text-sm font-medium flex justify-between items-start group cursor-grab active:cursor-grabbing transition-all select-none ${
+        isLight 
+          ? 'bg-white border-slate-200 text-slate-800 hover:border-indigo-300 shadow-sm' 
+          : 'bg-slate-900/90 border-slate-700/60 text-slate-200 hover:border-indigo-500/50'
+      }`}
     >
       <span className="flex-1 mr-2">{task.content}</span>
       <button 
         type="button"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={() => onDelete(task.id)}
-        className="text-slate-300 hover:text-red-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        className="text-slate-400 hover:text-red-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
         title="Eliminar tarea"
       >
         ✕
@@ -36,20 +41,22 @@ function SortableTask({ task, onDelete }) {
   );
 }
 
-// Componente de Columna con zona Droppable independiente
-function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumnId, newTaskContent, setNewTaskContent, handleCreateTask }) {
+function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumnId, newTaskContent, setNewTaskContent, handleCreateTask, theme }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const isLight = theme === 'light';
 
   return (
     <div 
       ref={setNodeRef} 
-      className={`w-80 shrink-0 bg-slate-100 rounded-2xl p-4 flex flex-col max-h-full border transition-colors shadow-sm ${
-        isOver ? 'border-indigo-400 bg-indigo-50/40' : 'border-slate-200'
+      className={`w-80 shrink-0 rounded-2xl p-4 flex flex-col max-h-full border transition-colors shadow-sm ${
+        isLight 
+          ? `bg-slate-100 ${isOver ? 'border-indigo-400 bg-indigo-50/40' : 'border-slate-200'}` 
+          : `bg-slate-900/40 border-slate-800 ${isOver ? 'border-indigo-500 bg-indigo-950/20' : ''}`
       }`}
     >
       <div className="flex justify-between items-center mb-4 px-1">
-        <h3 className="font-bold text-slate-700 text-sm tracking-wide uppercase">{column.title}</h3>
-        <span className="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">
+        <h3 className={`font-bold text-sm tracking-wide uppercase ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>{column.title}</h3>
+        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isLight ? 'bg-slate-200 text-slate-600' : 'bg-slate-800 text-slate-400'}`}>
           {column.tasks?.length || 0}
         </span>
       </div>
@@ -57,7 +64,7 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
       <div className="flex-1 overflow-y-auto space-y-3 pr-1 min-h-[150px]">
         <SortableContext items={column.tasks?.map(t => t.id) || []} strategy={verticalListSortingStrategy}>
           {column.tasks?.map((task) => (
-            <SortableTask key={task.id} task={task} onDelete={onDeleteTask} />
+            <SortableTask key={task.id} task={task} onDelete={onDeleteTask} theme={theme} />
           ))}
         </SortableContext>
       </div>
@@ -70,7 +77,11 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
               value={newTaskContent}
               onChange={(e) => setNewTaskContent(e.target.value)}
               placeholder="Escribe el contenido de la tarea..."
-              className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-600 outline-none"
+              className={`w-full p-2.5 border rounded-xl text-sm outline-none ${
+                isLight 
+                  ? 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-600' 
+                  : 'bg-slate-950 border-slate-800 text-white focus:ring-2 focus:ring-indigo-600'
+              }`}
               required
               autoFocus
             />
@@ -78,7 +89,7 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
               <button 
                 type="button" 
                 onClick={() => setActiveColumnId(null)}
-                className="px-3 py-1.5 text-xs text-slate-500 font-bold hover:bg-slate-200 rounded-lg cursor-pointer"
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg cursor-pointer ${isLight ? 'text-slate-500 hover:bg-slate-200' : 'text-slate-400 hover:bg-slate-800'}`}
               >
                 Cancelar
               </button>
@@ -94,7 +105,9 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
           <button 
             type="button"
             onClick={() => setActiveColumnId(column.id)}
-            className="w-full py-2 px-3 text-left text-sm font-semibold text-slate-500 hover:text-indigo-600 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer flex items-center gap-2"
+            className={`w-full py-2 px-3 text-left text-sm font-semibold rounded-xl transition-colors cursor-pointer flex items-center gap-2 ${
+              isLight ? 'text-slate-500 hover:text-indigo-600 hover:bg-slate-200/60' : 'text-slate-400 hover:text-indigo-400 hover:bg-slate-800/60'
+            }`}
           >
             <span>+ Añadir tarea</span>
           </button>
@@ -114,28 +127,35 @@ export default function BoardDetail() {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [activeColumnId, setActiveColumnId] = useState(null);
 
-  // Estados para el Modal de Invitación
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
 
+  // Notificaciones y Temas
+  const [notifications, setNotifications] = useState([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [theme, setTheme] = useState(localStorage.getItem('colabty_theme') || 'dark');
+
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
       fetchBoardDetails(id);
+      fetchNotifications(parsedUser.id);
     } else {
       navigate('/login');
     }
   }, [id, navigate]);
+
+  const changeTheme = (newTheme) => {
+    setTheme(newTheme);
+    localStorage.setItem('colabty_theme', newTheme);
+  };
 
   const fetchBoardDetails = async (boardId) => {
     try {
@@ -154,14 +174,39 @@ export default function BoardDetail() {
     }
   };
 
+  const fetchNotifications = async (userId) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/notifications/${userId}`);
+      const data = await response.json();
+      if (response.ok) setNotifications(data);
+    } catch (error) {
+      console.error('Error al obtener notificaciones:', error);
+    }
+  };
+
+  const handleRespondNotification = async (inviteId, action) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/notifications/${inviteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert(data.message);
+        fetchNotifications(user.id);
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error al responder invitación:', error);
+    }
+  };
+
   const handleDeleteTask = async (taskId) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/tasks/${taskId}`, {
-        method: 'DELETE'
-      });
-      if (response.ok) {
-        fetchBoardDetails(id);
-      }
+      const response = await fetch(`http://localhost:4000/api/tasks/${taskId}`, { method: 'DELETE' });
+      if (response.ok) fetchBoardDetails(id);
     } catch (error) {
       console.error('Error al eliminar tarea:', error);
     }
@@ -188,7 +233,6 @@ export default function BoardDetail() {
     }
   };
 
-  // Función para enviar la invitación por correo
   const handleInviteMember = async (e) => {
     e.preventDefault();
     if (!inviteEmail.trim()) return;
@@ -201,7 +245,6 @@ export default function BoardDetail() {
       });
 
       const data = await response.json();
-
       if (response.ok) {
         alert(data.message);
         setInviteEmail('');
@@ -215,7 +258,6 @@ export default function BoardDetail() {
     }
   };
 
-  // Movimiento con Actualización Optimista (Instantáneo)
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     if (!over) return;
@@ -224,7 +266,6 @@ export default function BoardDetail() {
     const overId = over.id;
 
     let targetColumnId = null;
-
     const matchedColumn = board.columns.find(col => col.id === overId);
     if (matchedColumn) {
       targetColumnId = matchedColumn.id;
@@ -243,7 +284,6 @@ export default function BoardDetail() {
     const currentColumn = board.columns.find(col => col.tasks.some(t => t.id === activeTaskId));
     if (currentColumn && currentColumn.id === targetColumnId) return;
 
-    // --- ACTUALIZACIÓN OPTIMISTA LOCAL ---
     let movedTask = null;
     const updatedColumns = board.columns.map(col => {
       if (col.id === currentColumn.id) {
@@ -259,7 +299,6 @@ export default function BoardDetail() {
 
     setBoard({ ...board, columns: updatedColumns });
 
-    // --- PETICIÓN AL BACKEND EN SEGUNDO PLANO ---
     try {
       await fetch(`http://localhost:4000/api/tasks/${activeTaskId}/move`, {
         method: 'PATCH',
@@ -268,56 +307,100 @@ export default function BoardDetail() {
       });
     } catch (error) {
       console.error('Error al sincronizar el movimiento:', error);
-      fetchBoardDetails(id); // Revertir si hay error de red
+      fetchBoardDetails(id);
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
+  const themesConfig = {
+    dark: {
+      bg: 'bg-slate-950 text-slate-100',
+      sidebar: 'bg-slate-900/60 border-slate-800',
+      header: 'bg-slate-900/40 border-slate-800/80',
+      textMain: 'text-white',
+      textMuted: 'text-slate-400',
+      accent: 'text-indigo-400 bg-indigo-600/20 border-indigo-500/30',
+    },
+    light: {
+      bg: 'bg-slate-50 text-slate-900',
+      sidebar: 'bg-indigo-950 text-white border-indigo-900',
+      header: 'bg-white border-slate-200',
+      textMain: 'text-slate-900',
+      textMuted: 'text-slate-500',
+      accent: 'text-indigo-600 bg-indigo-50 border-indigo-200',
+    },
+    emerald: {
+      bg: 'bg-zinc-950 text-emerald-50',
+      sidebar: 'bg-zinc-900/80 border-emerald-950',
+      header: 'bg-zinc-900/50 border-emerald-950',
+      textMain: 'text-emerald-100',
+      textMuted: 'text-zinc-400',
+      accent: 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30',
+    },
+    violet: {
+      bg: 'bg-purple-950/30 text-purple-100',
+      sidebar: 'bg-purple-950/60 border-purple-900/40',
+      header: 'bg-purple-950/40 border-purple-900/40',
+      textMain: 'text-white',
+      textMuted: 'text-purple-300/70',
+      accent: 'text-purple-300 bg-purple-600/30 border-purple-500/40',
+    }
+  };
+
+  const currentTheme = themesConfig[theme] || themesConfig.dark;
+
   if (!user || loading) {
-    return <div className="flex h-screen items-center justify-center bg-slate-50 font-sans text-slate-500">Cargando tablero...</div>;
+    return <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-400 font-sans">Cargando tablero...</div>;
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
-      <aside className="hidden md:flex flex-col w-64 bg-indigo-950 text-white shadow-xl">
-        <div className="h-16 flex items-center px-6 border-b border-indigo-900/50">
-          <h1 className="text-2xl font-black tracking-tighter text-white">CoLabTy.</h1>
+    <div className={`flex h-screen ${currentTheme.bg} font-sans overflow-hidden transition-colors duration-300`}>
+      <aside className={`hidden lg:flex flex-col w-72 ${currentTheme.sidebar} border-r backdrop-blur-xl`}>
+        <div className={`h-20 flex items-center px-8 border-b ${theme === 'light' ? 'border-indigo-900/50' : 'border-slate-800/80'}`}>
+          <h1 className="text-2xl font-black tracking-wider bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">CoLabTy</h1>
         </div>
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2.5 text-indigo-200 hover:bg-indigo-900/50 hover:text-white rounded-lg font-medium transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-            Inicio
+        <nav className="flex-1 px-4 py-8 space-y-3">
+          <Link to="/dashboard" className={`flex items-center gap-3.5 px-4 py-3 ${theme === 'light' ? 'text-indigo-200 hover:bg-indigo-900/50' : 'text-slate-400 hover:bg-slate-800/50'} rounded-2xl font-medium transition-all`}>
+            <span>Panel General</span>
           </Link>
-          <Link to="/boards" className="flex items-center gap-3 px-3 py-2.5 bg-indigo-600 rounded-lg text-white font-medium transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
-            Mis Tableros
+          <Link to="/boards" className={`flex items-center gap-3.5 px-4 py-3 border rounded-2xl font-semibold transition-all ${currentTheme.accent}`}>
+            <span>Mis Tableros</span>
           </Link>
-          <Link to="/chat" className="flex items-center gap-3 px-3 py-2.5 text-indigo-200 hover:bg-indigo-900/50 hover:text-white rounded-lg font-medium transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-            Chat de Equipo
+          <Link to="/chat" className={`flex items-center gap-3.5 px-4 py-3 ${theme === 'light' ? 'text-indigo-200 hover:bg-indigo-900/50' : 'text-slate-400 hover:bg-slate-800/50'} rounded-2xl font-medium transition-all`}>
+            <span>Chat en Vivo</span>
           </Link>
         </nav>
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shrink-0">
+        <header className={`h-20 border-b ${currentTheme.header} backdrop-blur-xl flex items-center justify-between px-8 z-10 shrink-0`}>
           <div className="flex items-center gap-4">
-            <Link to="/boards" className="text-sm font-bold text-indigo-600 hover:underline">
+            <Link to="/boards" className="text-sm font-bold text-indigo-400 hover:underline">
               ← Volver
             </Link>
-            <span className="text-slate-300">|</span>
-            <h2 className="text-xl font-bold text-slate-800">{board?.title}</h2>
+            <span className="text-slate-600">|</span>
+            <h2 className={`text-xl font-bold ${currentTheme.textMain}`}>{board?.title}</h2>
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Botón para abrir el modal de invitar */}
+            {/* Selector de Temas */}
+            <div className="flex items-center bg-slate-900/10 dark:bg-slate-800 border border-slate-700/40 p-1 rounded-xl gap-1">
+              <button onClick={() => changeTheme('dark')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'dark' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>🌙</button>
+              <button onClick={() => changeTheme('light')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'light' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>☀️</button>
+              <button onClick={() => changeTheme('emerald')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'emerald' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}>🌿</button>
+              <button onClick={() => changeTheme('violet')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'violet' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>🍇</button>
+            </div>
+
             <button 
               onClick={() => setIsInviteModalOpen(true)}
-              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold px-3.5 py-2 rounded-xl text-sm transition-colors flex items-center gap-2 cursor-pointer"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-colors flex items-center gap-2 cursor-pointer shadow-md"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-              Invitar Miembro
+              <span>+ Invitar Miembro</span>
             </button>
-            <span className="text-sm text-slate-500 font-medium">{user.name}</span>
           </div>
         </header>
 
@@ -333,46 +416,46 @@ export default function BoardDetail() {
                 newTaskContent={newTaskContent}
                 setNewTaskContent={setNewTaskContent}
                 handleCreateTask={handleCreateTask}
+                theme={theme}
               />
             ))}
           </div>
         </DndContext>
       </main>
 
-      {/* Modal para Invitar Colaborador */}
+      {/* Modal Invitar */}
       {isInviteModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-bold text-slate-900">Invitar compañero al tablero</h3>
-              <button onClick={() => setIsInviteModalOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold text-xl cursor-pointer">✕</button>
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <h3 className="text-xl font-bold">Invitar compañero al tablero</h3>
+              <button onClick={() => setIsInviteModalOpen(false)} className="text-slate-400 hover:text-white font-bold text-xl cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleInviteMember} className="space-y-4">
               <div>
-                <label className="text-sm font-bold text-slate-700 block mb-2">Correo electrónico registrado</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">Correo electrónico</label>
                 <input 
                   type="email" 
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder="ejemplo@correo.com"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm text-white"
                   required
                 />
-                <p className="text-xs text-slate-400 mt-1">El usuario debe estar registrado previamente en CoLabTy.</p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
                 <button 
                   type="button" 
                   onClick={() => setIsInviteModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors cursor-pointer text-sm"
+                  className="px-4 py-2 text-slate-400 font-bold hover:bg-slate-800 rounded-xl transition-colors cursor-pointer text-sm"
                 >
                   Cancelar
                 </button>
                 <button 
                   type="submit"
-                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-sm cursor-pointer text-sm"
+                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-md cursor-pointer text-sm"
                 >
                   Enviar Invitación
                 </button>
