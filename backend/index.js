@@ -8,6 +8,10 @@ const { PrismaClient } = pkg;
 import pg from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 
+// --- Importaciones para Socket.io ---
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+
 const { Pool } = pg;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -253,8 +257,66 @@ app.delete('/api/boards/:boardId', async (req, res) => {
   }
 });
 
-// --- INICIO DEL SERVIDOR ---
+// --- 7. RUTA PARA MOVER TAREAS ENTRE COLUMNAS ---
+app.patch('/api/tasks/:taskId/move', async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { columnId } = req.body;
+
+    if (!columnId) {
+      return res.status(400).json({ error: 'La columna de destino es obligatoria' });
+    }
+
+    const taskCount = await prisma.task.count({
+      where: { columnId: columnId }
+    });
+
+    const updatedTask = await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        columnId: columnId,
+        order: taskCount + 1
+      }
+    });
+
+    return res.status(200).json({ message: '¡Tarea movida con éxito!', task: updatedTask });
+  } catch (error) {
+    console.error('Error al mover tarea:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ==========================================
+// --- CONFIGURACIÓN DE SOCKET.IO (CHAT) ---
+// ==========================================
+
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*", // En producción, restringe a tu dominio
+    methods: ["GET", "POST"]
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('Usuario conectado al chat:', socket.id);
+
+  // Escuchar mensajes enviados por el cliente
+  socket.on('send_message', (data) => {
+    // Reenvía el mensaje a todos los clientes conectados (broadcast)
+    io.emit('receive_message', data);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Usuario desconectado del chat');
+  });
+});
+
+// ==========================================
+// --- INICIO DEL SERVIDOR HTTP + SOCKETS ---
+// ==========================================
+
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+httpServer.listen(PORT, () => {
+  console.log(`Servidor y WebSockets corriendo en http://localhost:${PORT}`);
 });

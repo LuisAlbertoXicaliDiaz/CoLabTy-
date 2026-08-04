@@ -4,6 +4,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Boards from './pages/Boards'
 import BoardDetail from './pages/BoardDetail'
+import Chat from './pages/Chat' // <-- Corregido aquí
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/boards" element={<Boards />} />
       <Route path="/boards/:id" element={<BoardDetail />} />
+      <Route path="/chat" element={<Chat />} />
       
       {/* Ruta por defecto: redirige al login si entras a la raíz */}
       <Route path="/" element={<Navigate to="/login" replace />} />
