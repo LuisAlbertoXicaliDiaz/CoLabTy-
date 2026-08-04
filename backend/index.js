@@ -397,6 +397,30 @@ app.patch('/api/notifications/:inviteId', async (req, res) => {
 });
 
 // ==========================================
+// --- 9. RUTAS DE MENSAJES (CHAT) ---
+// ==========================================
+
+// Obtener historial de mensajes de un tablero
+app.get('/api/boards/:boardId/messages', async (req, res) => {
+  try {
+    const { boardId } = req.params;
+
+    const messages = await prisma.message.findMany({
+      where: { boardId: boardId },
+      include: {
+        user: { select: { id: true, name: true } }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    res.status(200).json(messages);
+  } catch (error) {
+    console.error('Error al obtener mensajes:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ==========================================
 // --- CONFIGURACIÓN DE SOCKET.IO (CHAT POR TABLERO) ---
 // ==========================================
 
@@ -416,17 +440,40 @@ io.on('connection', (socket) => {
     socket.join(boardId);
     console.log(`Usuario ${socket.id} se unió a la sala del tablero: ${boardId}`);
   });
+// Escuchar mensajes y guardarlos en la BD, luego emitirlos a la sala
+  socket.on('send_message', async (data) => {
+    try {
+      // Soportar tanto data.content como data.message por seguridad
+      const messageText = data.content || data.message;
+      const targetBoardId = data.boardId;
+      const currentUserId = data.userId;
 
-  // Escuchar mensajes y enviarlos únicamente a los usuarios de ESE tablero
-  socket.on('send_message', (data) => {
-    // data debe incluir { boardId, message, user }
-    io.to(data.boardId).emit('receive_message', data);
+      if (!messageText || !targetBoardId || !currentUserId) {
+        console.error('Faltan datos para guardar el mensaje:', data);
+        return;
+      }
+
+      const savedMessage = await prisma.message.create({
+        data: {
+          content: messageText,
+          board: { connect: { id: targetBoardId } },
+          user: { connect: { id: parseInt(currentUserId) } }
+        },
+        include: {
+          user: { select: { id: true, name: true } }
+        }
+      });
+
+      io.to(targetBoardId).emit('receive_message', savedMessage);
+    } catch (error) {
+      console.error('Error al guardar mensaje:', error);
+    }
   });
 
   socket.on('disconnect', () => {
     console.log('Usuario desconectado del chat');
   });
-});
+}); // <--- Cierra io.on('connection')
 
 // ==========================================
 // --- INICIO DEL SERVIDOR HTTP + SOCKETS ---

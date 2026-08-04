@@ -18,6 +18,7 @@ model User {
 
   boards      Board[]     // Tableros creados por el usuario
   userBoards  UserBoard[] // Tableros donde ha sido invitado
+  messages    Message[]   // Mensajes enviados en el chat
 }
 
 model Board {
@@ -30,6 +31,7 @@ model Board {
   
   columns   Column[] 
   members   UserBoard[] // Miembros invitados al tablero
+  messages  Message[]   // Mensajes del chat de este tablero
 }
 
 model Column {
@@ -52,6 +54,19 @@ model Task {
   
   columnId  String
   column    Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
+}
+
+// Modelo para el historial del chat por tablero
+model Message {
+  id        Int      @id @default(autoincrement())
+  content   String
+  createdAt DateTime @default(now())
+  
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // Tabla intermedia para la relación de muchos a muchos (Colaboradores)

@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { io } from 'socket.io-client';
 
+// --- SortableTask (sin cambios) ---
 function SortableTask({ task, onDelete, theme }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
 
@@ -15,7 +17,6 @@ function SortableTask({ task, onDelete, theme }) {
 
   const isLight = theme === 'light';
 
-  // Configuración de colores para las prioridades
   const priorityColors = {
     alta: 'bg-red-500/20 text-red-400 border-red-500/30',
     media: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
@@ -47,7 +48,6 @@ function SortableTask({ task, onDelete, theme }) {
         </button>
       </div>
 
-      {/* Aquí es donde se muestran la prioridad y la fecha límite */}
       <div className="flex items-center justify-between pt-2 border-t border-slate-700/20 text-xs">
         <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase border ${priorityColors[task.priority] || priorityColors.media}`}>
           {task.priority || 'media'}
@@ -63,6 +63,7 @@ function SortableTask({ task, onDelete, theme }) {
   );
 }
 
+// --- ColumnContainer (sin cambios) ---
 function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumnId, newTaskContent, setNewTaskContent, taskPriority, setTaskPriority, taskDueDate, setTaskDueDate, handleCreateTask, theme }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const isLight = theme === 'light';
@@ -96,8 +97,6 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
           <form onSubmit={(e) => handleCreateTask(e, column.id)} className="space-y-3">
             <textarea 
               rows="2"
-              id="newTaskContent"
-              name="newTaskContent"
               value={newTaskContent}
               onChange={(e) => setNewTaskContent(e.target.value)}
               placeholder="¿Qué tarea deseas agregar?"
@@ -112,8 +111,6 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
 
             <div className="flex gap-2">
               <select 
-                id="taskPriority"
-                name="taskPriority"
                 value={taskPriority}
                 onChange={(e) => setTaskPriority(e.target.value)}
                 className={`flex-1 p-2 border rounded-xl text-xs font-bold outline-none ${isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-950 border-slate-800 text-slate-300'}`}
@@ -125,8 +122,6 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
 
               <input 
                 type="date"
-                id="taskDueDate"
-                name="taskDueDate"
                 value={taskDueDate}
                 onChange={(e) => setTaskDueDate(e.target.value)}
                 className={`p-2 border rounded-xl text-xs font-semibold outline-none ${isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-950 border-slate-800 text-slate-300'}`}
@@ -165,6 +160,7 @@ function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumn
   );
 }
 
+// --- Componente principal BoardDetail ---
 export default function BoardDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -173,21 +169,49 @@ export default function BoardDetail() {
   const [loading, setLoading] = useState(true);
   
   const [newTaskContent, setNewTaskContent] = useState('');
+  const [taskPriority, setTaskPriority] = useState('media');
+  const [taskDueDate, setTaskDueDate] = useState('');
   const [activeColumnId, setActiveColumnId] = useState(null);
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
 
-  // Notificaciones y Temas
   const [notifications, setNotifications] = useState([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('colabty_theme') || 'dark');
+
+  // --- Estados para el chat ---
+  const [socket, setSocket] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [messageInput, setMessageInput] = useState('');
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const messagesEndRef = useRef(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // Al cargar el tablero, traemos el historial del chat
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchMessages = async () => {
+      try {
+        const response = await fetch(`http://localhost:4000/api/boards/${id}/messages`);
+        const data = await response.json();
+        if (response.ok) {
+          setMessages(data); // Rellena el chat con lo que se habló antes
+        }
+      } catch (error) {
+        console.error('Error al cargar historial de chat:', error);
+      }
+    };
+
+    fetchMessages();
+  }, [id]);
+
+  // --- Efecto para cargar usuario y datos del tablero ---
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -200,6 +224,34 @@ export default function BoardDetail() {
     }
   }, [id, navigate]);
 
+  // --- Efecto para el socket (chat) ---
+  useEffect(() => {
+    if (!user || !id) return;
+
+    const newSocket = io('http://localhost:4000');
+    setSocket(newSocket);
+
+    // Unirse a la sala del tablero
+    newSocket.emit('join_board', id);
+
+    // Escuchar mensajes de esta sala
+    newSocket.on('receive_message', (data) => {
+      setMessages((prev) => [...prev, data]);
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [id, user]);
+
+  // --- Scroll automático al último mensaje ---
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
+  // --- Funciones ---
   const changeTheme = (newTheme) => {
     setTheme(newTheme);
     localStorage.setItem('colabty_theme', newTheme);
@@ -268,12 +320,19 @@ export default function BoardDetail() {
       const response = await fetch('http://localhost:4000/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: newTaskContent, columnId })
+        body: JSON.stringify({ 
+          content: newTaskContent, 
+          columnId,
+          priority: taskPriority,
+          dueDate: taskDueDate || null
+        })
       });
 
       if (response.ok) {
         fetchBoardDetails(id);
         setNewTaskContent('');
+        setTaskPriority('media');
+        setTaskDueDate('');
         setActiveColumnId(null);
       }
     } catch (error) {
@@ -364,6 +423,21 @@ export default function BoardDetail() {
     navigate('/login');
   };
 
+  // --- Enviar mensaje de chat ---
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!messageInput.trim() || !socket || !user || !id) return;
+
+    socket.emit('send_message', {
+      boardId: id,
+      content: messageInput,
+      userId: user.id
+    });
+
+    setMessageInput('');
+  };
+
+  // --- Temas ---
   const themesConfig = {
     dark: {
       bg: 'bg-slate-950 text-slate-100',
@@ -372,6 +446,9 @@ export default function BoardDetail() {
       textMain: 'text-white',
       textMuted: 'text-slate-400',
       accent: 'text-indigo-400 bg-indigo-600/20 border-indigo-500/30',
+      chatBg: 'bg-slate-900/95 border-slate-800',
+      chatMessage: 'bg-slate-800 text-slate-100',
+      chatOwnMessage: 'bg-indigo-600 text-white',
     },
     light: {
       bg: 'bg-slate-50 text-slate-900',
@@ -380,6 +457,9 @@ export default function BoardDetail() {
       textMain: 'text-slate-900',
       textMuted: 'text-slate-500',
       accent: 'text-indigo-600 bg-indigo-50 border-indigo-200',
+      chatBg: 'bg-white/95 border-slate-200',
+      chatMessage: 'bg-slate-100 text-slate-800',
+      chatOwnMessage: 'bg-indigo-600 text-white',
     },
     emerald: {
       bg: 'bg-zinc-950 text-emerald-50',
@@ -388,6 +468,9 @@ export default function BoardDetail() {
       textMain: 'text-emerald-100',
       textMuted: 'text-zinc-400',
       accent: 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30',
+      chatBg: 'bg-zinc-900/95 border-emerald-900',
+      chatMessage: 'bg-zinc-800 text-emerald-100',
+      chatOwnMessage: 'bg-emerald-600 text-white',
     },
     violet: {
       bg: 'bg-purple-950/30 text-purple-100',
@@ -396,6 +479,9 @@ export default function BoardDetail() {
       textMain: 'text-white',
       textMuted: 'text-purple-300/70',
       accent: 'text-purple-300 bg-purple-600/30 border-purple-500/40',
+      chatBg: 'bg-purple-950/95 border-purple-900',
+      chatMessage: 'bg-purple-900/60 text-purple-100',
+      chatOwnMessage: 'bg-purple-600 text-white',
     }
   };
 
@@ -407,6 +493,7 @@ export default function BoardDetail() {
 
   return (
     <div className={`flex h-screen ${currentTheme.bg} font-sans overflow-hidden transition-colors duration-300`}>
+      {/* Sidebar */}
       <aside className={`hidden lg:flex flex-col w-72 ${currentTheme.sidebar} border-r backdrop-blur-xl`}>
         <div className={`h-20 flex items-center px-8 border-b ${theme === 'light' ? 'border-indigo-900/50' : 'border-slate-800/80'}`}>
           <h1 className="text-2xl font-black tracking-wider bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">CoLabTy</h1>
@@ -425,6 +512,7 @@ export default function BoardDetail() {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header */}
         <header className={`h-20 border-b ${currentTheme.header} backdrop-blur-xl flex items-center justify-between px-8 z-10 shrink-0`}>
           <div className="flex items-center gap-4">
             <Link to="/boards" className="text-sm font-bold text-indigo-400 hover:underline">
@@ -443,6 +531,14 @@ export default function BoardDetail() {
               <button onClick={() => changeTheme('violet')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'violet' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>🍇</button>
             </div>
 
+            {/* Botón para abrir/cerrar chat */}
+            <button 
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              className="bg-slate-800 hover:bg-slate-700 text-indigo-400 font-bold px-4 py-2.5 rounded-xl text-sm transition-colors flex items-center gap-2 cursor-pointer border border-slate-700/50 shadow-md"
+            >
+              <span>💬 Chat del Tablero</span>
+            </button>
+
             <button 
               onClick={() => setIsInviteModalOpen(true)}
               className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-colors flex items-center gap-2 cursor-pointer shadow-md"
@@ -452,6 +548,7 @@ export default function BoardDetail() {
           </div>
         </header>
 
+        {/* Contenido del tablero (DnD) */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <div className="flex-1 overflow-x-auto p-6 lg:p-8 flex gap-6 items-start">
             {board?.columns?.map((column) => (
@@ -463,6 +560,10 @@ export default function BoardDetail() {
                 setActiveColumnId={setActiveColumnId}
                 newTaskContent={newTaskContent}
                 setNewTaskContent={setNewTaskContent}
+                taskPriority={taskPriority}
+                setTaskPriority={setTaskPriority}
+                taskDueDate={taskDueDate}
+                setTaskDueDate={setTaskDueDate}
                 handleCreateTask={handleCreateTask}
                 theme={theme}
               />
@@ -471,7 +572,69 @@ export default function BoardDetail() {
         </DndContext>
       </main>
 
-      {/* Modal Invitar */}
+      {/* Panel flotante de Chat */}
+      {isChatOpen && (
+        <div className={`fixed bottom-4 right-4 w-96 h-[500px] ${currentTheme.chatBg} border rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50 transition-all duration-300`}>
+          {/* Cabecera del chat */}
+          <div className={`flex justify-between items-center p-4 border-b ${theme === 'light' ? 'border-slate-200' : 'border-slate-800'}`}>
+            <h3 className={`font-bold ${currentTheme.textMain}`}>💬 Chat - {board?.title}</h3>
+            <button 
+              onClick={() => setIsChatOpen(false)}
+              className="text-slate-400 hover:text-white font-bold text-xl cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Lista de mensajes */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {messages.length === 0 ? (
+              <p className={`text-center text-sm ${currentTheme.textMuted} mt-10`}>No hay mensajes aún. ¡Escribe algo!</p>
+            ) : (
+              messages.map((msg, index) => (
+                <div 
+                  key={index} 
+                  className={`max-w-[80%] p-3 rounded-2xl text-sm ${
+                    msg.user?.id === user?.id 
+                      ? `${currentTheme.chatOwnMessage} self-end ml-auto` 
+                      : `${currentTheme.chatMessage} self-start`
+                  }`}
+                >
+                  <div className="font-bold text-xs opacity-70 mb-1">
+                    {msg.user?.name || 'Anónimo'}
+                  </div>
+                  {/* 🔥 CORRECCIÓN AQUÍ: msg.content (o msg.message como fallback) */}
+                  <div>{msg.content || msg.message}</div>
+                </div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input para enviar mensajes */}
+          <form onSubmit={handleSendMessage} className={`p-4 border-t ${theme === 'light' ? 'border-slate-200' : 'border-slate-800'} flex gap-2`}>
+            <input
+              type="text"
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              placeholder="Escribe un mensaje..."
+              className={`flex-1 px-4 py-2 rounded-xl border text-sm outline-none font-medium ${
+                theme === 'light' 
+                  ? 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-600' 
+                  : 'bg-slate-950 border-slate-800 text-white focus:ring-2 focus:ring-indigo-600'
+              }`}
+            />
+            <button 
+              type="submit"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer"
+            >
+              Enviar
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Modal Invitar (sin cambios) */}
       {isInviteModalOpen && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-6">
