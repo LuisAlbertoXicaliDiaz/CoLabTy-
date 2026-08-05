@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export default function Boards() {
   const navigate = useNavigate();
@@ -9,11 +10,9 @@ export default function Boards() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Estados para las notificaciones (campanita)
   const [notifications, setNotifications] = useState([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  // Estado para el tema actual ("dark", "light", "emerald", "violet")
   const [theme, setTheme] = useState(localStorage.getItem('colabty_theme') || 'dark');
 
   useEffect(() => {
@@ -35,13 +34,14 @@ export default function Boards() {
 
   const fetchBoards = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/boards/${userId}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/boards/${userId}`);
       const data = await response.json();
       if (response.ok) {
         setBoards(data);
       }
     } catch (error) {
       console.error('Error al obtener tableros:', error);
+      toast.error('Error al cargar los tableros');
     } finally {
       setLoading(false);
     }
@@ -49,19 +49,20 @@ export default function Boards() {
 
   const fetchNotifications = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/notifications/${userId}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/${userId}`);
       const data = await response.json();
       if (response.ok) {
         setNotifications(data);
       }
     } catch (error) {
       console.error('Error al obtener notificaciones:', error);
+      toast.error('Error al cargar notificaciones');
     }
   };
 
   const handleRespondNotification = async (inviteId, action) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/notifications/${inviteId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/${inviteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })
@@ -69,14 +70,15 @@ export default function Boards() {
 
       const data = await response.json();
       if (response.ok) {
-        alert(data.message);
+        toast.success(data.message || 'Invitación procesada');
         fetchBoards(user.id);
         fetchNotifications(user.id);
       } else {
-        alert('Error: ' + data.error);
+        toast.error(data.error || 'Error al procesar la invitación');
       }
     } catch (error) {
       console.error('Error al responder invitación:', error);
+      toast.error('Error de conexión al responder invitación');
     }
   };
 
@@ -85,7 +87,7 @@ export default function Boards() {
     if (!newBoardTitle.trim()) return;
 
     try {
-      const response = await fetch('http://localhost:4000/api/boards', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/boards`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -97,15 +99,16 @@ export default function Boards() {
       const data = await response.json();
 
       if (response.ok) {
+        toast.success(data.message || 'Tablero creado con éxito');
         setNewBoardTitle('');
         setIsModalOpen(false);
         fetchBoards(user.id);
       } else {
-        alert('Error: ' + data.error);
+        toast.error(data.error || 'Error al crear el tablero');
       }
     } catch (error) {
       console.error('Error al crear tablero:', error);
-      alert('Hubo un problema al conectar con el servidor.');
+      toast.error('Hubo un problema al conectar con el servidor.');
     }
   };
 
@@ -114,17 +117,19 @@ export default function Boards() {
     if (!window.confirm('¿Estás seguro de que deseas eliminar este tablero y todas sus tareas?')) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/api/boards/${boardId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/boards/${boardId}`, {
         method: 'DELETE'
       });
 
       if (response.ok) {
+        toast.success('Tablero eliminado correctamente');
         setBoards(boards.filter(b => b.id !== boardId));
       } else {
-        alert('Error al eliminar el tablero');
+        toast.error('Error al eliminar el tablero');
       }
     } catch (error) {
       console.error('Error al eliminar el tablero:', error);
+      toast.error('Error de conexión al eliminar el tablero');
     }
   };
 
@@ -228,7 +233,6 @@ export default function Boards() {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Selector de Temas */}
             <div className="flex items-center bg-slate-900/10 dark:bg-slate-800 border border-slate-700/40 p-1 rounded-xl gap-1">
               <button onClick={() => changeTheme('dark')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer transition-all ${theme === 'dark' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>🌙 Oscuro</button>
               <button onClick={() => changeTheme('light')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer transition-all ${theme === 'light' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>☀️ Claro</button>
@@ -236,7 +240,6 @@ export default function Boards() {
               <button onClick={() => changeTheme('violet')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer transition-all ${theme === 'violet' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>🍇 Violeta</button>
             </div>
 
-            {/* Campanita */}
             <div className="relative">
               <button 
                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}

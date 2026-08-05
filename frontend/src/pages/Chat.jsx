@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
-
-const socket = io('http://localhost:4000');
+import toast from 'react-hot-toast';
 
 export default function Chat() {
   const navigate = useNavigate();
-  const { boardId } = useParams(); // <-- Extraemos el ID del tablero de la URL
+  const { boardId } = useParams();
   
   const [user, setUser] = useState(null);
   const [message, setMessage] = useState('');
@@ -16,6 +15,7 @@ export default function Chat() {
   const [notifications, setNotifications] = useState([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('colabty_theme') || 'dark');
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -24,23 +24,28 @@ export default function Chat() {
       setUser(parsedUser);
       fetchNotifications(parsedUser.id);
       
+      // Conectar Socket.io usando variable de entorno
+      const newSocket = io(import.meta.env.VITE_API_URL);
+      setSocket(newSocket);
+
       // Si estamos dentro de un tablero, nos unimos a la sala y traemos el historial
       if (boardId) {
-        socket.emit('join_board', boardId);
+        newSocket.emit('join_board', boardId);
         fetchMessageHistory(boardId);
       }
+
+      // Escuchar mensajes nuevos
+      newSocket.on('receive_message', (data) => {
+        setMessages((prev) => [...prev, data]);
+      });
+
+      return () => {
+        newSocket.disconnect();
+        newSocket.off('receive_message');
+      };
     } else {
       navigate('/login');
     }
-
-    // Escuchar mensajes nuevos
-    socket.on('receive_message', (data) => {
-      setMessages((prev) => [...prev, data]);
-    });
-
-    return () => {
-      socket.off('receive_message');
-    };
   }, [navigate, boardId]);
 
   useEffect(() => {
@@ -54,55 +59,56 @@ export default function Chat() {
 
   const fetchNotifications = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/notifications/${userId}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/${userId}`);
       const data = await response.json();
       if (response.ok) setNotifications(data);
     } catch (error) {
       console.error('Error al obtener notificaciones:', error);
+      toast.error('Error al cargar notificaciones');
     }
   };
 
-  // Traer historial de mensajes desde la base de datos
   const fetchMessageHistory = async (id) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/boards/${id}/messages`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/boards/${id}/messages`);
       const data = await response.json();
       if (response.ok) {
         setMessages(data);
       }
     } catch (error) {
       console.error('Error al cargar historial del chat:', error);
+      toast.error('Error al cargar el historial del chat');
     }
   };
 
   const handleRespondNotification = async (inviteId, action) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/notifications/${inviteId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/${inviteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })
       });
       const data = await response.json();
       if (response.ok) {
-        alert(data.message);
+        toast.success(data.message || 'Invitación procesada');
         fetchNotifications(user.id);
       } else {
-        alert('Error: ' + data.error);
+        toast.error(data.error || 'Error al procesar la invitación');
       }
     } catch (error) {
       console.error('Error al responder invitación:', error);
+      toast.error('Error de conexión al responder invitación');
     }
   };
 
-  // Función corregida: Envía los datos exactamente como los pide Prisma
   const sendMessage = (e) => {
     e.preventDefault();
-    if (!message.trim() || !user || !boardId) return;
+    if (!message.trim() || !user || !boardId || !socket) return;
 
     const messageData = {
-      content: message,        // El texto
-      userId: user.id,         // ID numérico del usuario
-      boardId: boardId         // ID del tablero actual
+      content: message,
+      userId: user.id,
+      boardId: boardId
     };
 
     socket.emit('send_message', messageData);
@@ -180,8 +186,8 @@ export default function Chat() {
               <button onClick={() => changeTheme('violet')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'violet' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>🍇</button>
             </div>
 
-            {/* Campanita omitida por brevedad, mantenla igual */}
-            
+            {/* Campanita de notificaciones (simplificada, puedes agregarla si quieres) */}
+
             <button onClick={handleLogout} className="text-xs font-bold text-red-500 hover:text-red-400 transition-colors bg-slate-900/10 border border-slate-700/40 px-4 py-2.5 rounded-xl cursor-pointer">
               Salir
             </button>
@@ -207,7 +213,6 @@ export default function Chat() {
                 </div>
               ) : (
                 messages.map((msg, index) => {
-                  // Ajuste: Leer los datos tal cual los envía la base de datos
                   const msgUser = msg.user?.name || msg.user; 
                   const isMe = msgUser === user.name;
                   const msgText = msg.content || msg.text;

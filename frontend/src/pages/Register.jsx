@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -8,7 +9,6 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const navigate = useNavigate();
 
-  // Estado para el selector de temas
   const [theme, setTheme] = useState(localStorage.getItem('colabty_theme') || 'dark');
 
   const changeTheme = (newTheme) => {
@@ -20,12 +20,12 @@ export default function Register() {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      alert("Las contraseñas no coinciden");
+      toast.error('Las contraseñas no coinciden');
       return;
     }
 
     try {
-      const response = await fetch('http://localhost:4000/api/register', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -36,19 +36,18 @@ export default function Register() {
       const data = await response.json();
 
       if (response.ok) {
-        alert('¡' + data.message + '!');
+        toast.success(data.message || '¡Usuario registrado con éxito!');
         navigate('/login');
       } else {
-        alert('Error: ' + data.error);
+        toast.error(data.error || 'Error al registrar usuario');
       }
 
     } catch (error) {
       console.error('Error al conectar con el backend:', error);
-      alert('Hubo un problema al conectar con el servidor.');
+      toast.error('Hubo un problema al conectar con el servidor.');
     }
   };
 
-  // Mapeo de colores dinámicos manteniendo tu diseño original
   const themesConfig = {
     dark: {
       bg: 'bg-slate-950 text-slate-100',
@@ -97,7 +96,6 @@ export default function Register() {
   return (
     <div className={`min-h-screen flex w-full font-sans transition-colors duration-300 ${currentTheme.bg}`}>
       
-      {/* Selector de Temas Flotante */}
       <div className="absolute top-6 right-6 flex items-center bg-slate-900/20 border border-slate-700/40 p-1 rounded-xl gap-1 z-50">
         <button onClick={() => changeTheme('dark')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'dark' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>🌙</button>
         <button onClick={() => changeTheme('light')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'light' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>☀️</button>
@@ -105,7 +103,6 @@ export default function Register() {
         <button onClick={() => changeTheme('violet')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'violet' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>🍇</button>
       </div>
 
-      {/* Sección Izquierda */}
       <div className={`hidden lg:flex w-1/2 ${currentTheme.leftBg} p-12 relative overflow-hidden items-end`}>
         <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
         <div className="absolute top-[20%] right-[-10%] w-72 h-72 bg-violet-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
@@ -129,7 +126,6 @@ export default function Register() {
         </div>
       </div>
 
-      {/* Sección Derecha: Formulario de Registro */}
       <div className={`w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 h-screen overflow-y-auto ${currentTheme.rightBg}`}>
         <div className="w-full max-w-md space-y-8 my-auto py-8">
           
@@ -142,7 +138,6 @@ export default function Register() {
             <p className={`mt-2 ${currentTheme.mutedText}`}>Únete a CoLabTy y organiza a tu equipo.</p>
           </div>
 
-          {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-5">
             
             <div className="space-y-2">

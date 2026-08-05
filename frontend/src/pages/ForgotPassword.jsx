@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Estado para el selector de temas
   const [theme, setTheme] = useState(localStorage.getItem('colabty_theme') || 'dark');
 
   const changeTheme = (newTheme) => {
@@ -20,8 +20,7 @@ export default function ForgotPassword() {
     setMessage('');
 
     try {
-      // Aquí conectaremos con el backend más adelante
-      const response = await fetch('http://localhost:4000/api/forgot-password', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -33,19 +32,18 @@ export default function ForgotPassword() {
 
       if (response.ok) {
         setMessage('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.');
+        toast.success('Instrucciones enviadas correctamente');
       } else {
-        alert('Error: ' + (data.error || 'No se pudo procesar la solicitud.'));
+        toast.error(data.error || 'No se pudo procesar la solicitud');
       }
     } catch (error) {
       console.error('Error al conectar con el backend:', error);
-      // Mock de éxito visual para pruebas en caso de que el endpoint no exista aún
       setMessage('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Mapeo de colores según el tema seleccionado
   const themesConfig = {
     dark: {
       bg: 'bg-slate-950 text-slate-100',
@@ -94,7 +92,6 @@ export default function ForgotPassword() {
   return (
     <div className={`min-h-screen flex w-full font-sans transition-colors duration-300 ${currentTheme.bg}`}>
       
-      {/* Selector de Temas Flotante */}
       <div className="absolute top-6 right-6 flex items-center bg-slate-900/20 border border-slate-700/40 p-1 rounded-xl gap-1 z-50">
         <button onClick={() => changeTheme('dark')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'dark' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>🌙</button>
         <button onClick={() => changeTheme('light')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'light' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>☀️</button>
@@ -102,7 +99,6 @@ export default function ForgotPassword() {
         <button onClick={() => changeTheme('violet')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer ${theme === 'violet' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>🍇</button>
       </div>
 
-      {/* Sección Izquierda: Identidad de Marca */}
       <div className={`hidden lg:flex w-1/2 ${currentTheme.leftBg} p-12 relative overflow-hidden items-end`}>
         <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
         <div className="absolute top-[20%] right-[-10%] w-72 h-72 bg-violet-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
@@ -115,7 +111,6 @@ export default function ForgotPassword() {
         </div>
       </div>
 
-      {/* Sección Derecha: Formulario de Recuperación */}
       <div className={`w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 ${currentTheme.rightBg}`}>
         <div className="w-full max-w-md space-y-10">
           
@@ -130,14 +125,12 @@ export default function ForgotPassword() {
             </p>
           </div>
 
-          {/* Mensaje de confirmación */}
           {message && (
             <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-medium text-sm">
               {message}
             </div>
           )}
 
-          {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-6">
             
             <div className="space-y-2">

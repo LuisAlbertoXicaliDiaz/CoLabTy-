@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -9,7 +10,6 @@ export default function Dashboard() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Estado para el tema actual ("dark", "light", "emerald", "violet")
   const [theme, setTheme] = useState(localStorage.getItem('colabty_theme') || 'dark');
 
   useEffect(() => {
@@ -23,7 +23,6 @@ export default function Dashboard() {
     }
   }, [navigate]);
 
-  // Cambiar y guardar tema
   const changeTheme = (newTheme) => {
     setTheme(newTheme);
     localStorage.setItem('colabty_theme', newTheme);
@@ -31,15 +30,16 @@ export default function Dashboard() {
 
   const fetchDashboardData = async (userId) => {
     try {
-      const boardsRes = await fetch(`http://localhost:4000/api/boards/${userId}`);
+      const boardsRes = await fetch(`${import.meta.env.VITE_API_URL}/api/boards/${userId}`);
       const boardsData = await boardsRes.json();
       if (boardsRes.ok) setBoards(boardsData);
 
-      const notifRes = await fetch(`http://localhost:4000/api/notifications/${userId}`);
+      const notifRes = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/${userId}`);
       const notifData = await notifRes.json();
       if (notifRes.ok) setNotifications(notifData);
     } catch (error) {
       console.error('Error al cargar datos:', error);
+      toast.error('Error al cargar los datos del dashboard');
     } finally {
       setLoading(false);
     }
@@ -47,20 +47,21 @@ export default function Dashboard() {
 
   const handleRespondNotification = async (inviteId, action) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/notifications/${inviteId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/${inviteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })
       });
       const data = await response.json();
       if (response.ok) {
-        alert(data.message);
+        toast.success(data.message || 'Invitación procesada');
         fetchDashboardData(user.id);
       } else {
-        alert('Error: ' + data.error);
+        toast.error(data.error || 'Error al procesar la invitación');
       }
     } catch (error) {
       console.error('Error al responder invitación:', error);
+      toast.error('Error de conexión al responder invitación');
     }
   };
 
@@ -69,7 +70,6 @@ export default function Dashboard() {
     navigate('/login');
   };
 
-  // Clases dinámicas según el tema seleccionado
   const themesConfig = {
     dark: {
       bg: 'bg-slate-950 text-slate-100',
@@ -168,7 +168,6 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Selector de Temas */}
             <div className="flex items-center bg-slate-900/10 dark:bg-slate-800 border border-slate-700/40 p-1 rounded-xl gap-1">
               <button onClick={() => changeTheme('dark')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer transition-all ${theme === 'dark' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>🌙 Oscuro</button>
               <button onClick={() => changeTheme('light')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer transition-all ${theme === 'light' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>☀️ Claro</button>
@@ -176,7 +175,6 @@ export default function Dashboard() {
               <button onClick={() => changeTheme('violet')} className={`px-2.5 py-1 text-xs font-bold rounded-lg cursor-pointer transition-all ${theme === 'violet' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>🍇 Violeta</button>
             </div>
 
-            {/* Campanita de Notificaciones */}
             <div className="relative">
               <button 
                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}

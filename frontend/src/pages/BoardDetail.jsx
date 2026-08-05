@@ -325,7 +325,7 @@ export default function BoardDetail() {
 
     const fetchMessages = async () => {
       try {
-        const response = await fetch(`http://localhost:4000/api/boards/${id}/messages`);
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/boards/${id}/messages`);
         const data = await response.json();
         if (response.ok) {
           setMessages(data);
@@ -358,7 +358,7 @@ export default function BoardDetail() {
   useEffect(() => {
     if (!user || !id) return;
 
-    const newSocket = io('http://localhost:4000');
+    const newSocket = io(import.meta.env.VITE_API_URL);
     setSocket(newSocket);
 
     newSocket.emit('join_board', id);
@@ -386,7 +386,7 @@ export default function BoardDetail() {
 
   const fetchBoardDetails = async (boardId) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/boards/single/${boardId}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/boards/single/${boardId}`);
       const data = await response.json();
       if (response.ok) {
         setBoard(data);
@@ -405,7 +405,7 @@ export default function BoardDetail() {
 
   const fetchNotifications = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/notifications/${userId}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/${userId}`);
       const data = await response.json();
       if (response.ok) setNotifications(data);
     } catch (error) {
@@ -416,7 +416,7 @@ export default function BoardDetail() {
 
   const handleRespondNotification = async (inviteId, action) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/notifications/${inviteId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/${inviteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })
@@ -436,7 +436,7 @@ export default function BoardDetail() {
 
   const handleDeleteTask = async (taskId) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/tasks/${taskId}`, { method: 'DELETE' });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tasks/${taskId}`, { method: 'DELETE' });
       if (response.ok) {
         if (activeTaskId === taskId) setActiveTaskId(null);
         toast.success('Tarea eliminada correctamente');
@@ -455,7 +455,7 @@ export default function BoardDetail() {
     if (!newTaskTitle.trim()) return;
 
     try {
-      const response = await fetch('http://localhost:4000/api/tasks', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -492,7 +492,7 @@ export default function BoardDetail() {
     if (!inviteEmail.trim()) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/api/boards/${id}/invite`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/boards/${id}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: inviteEmail })
@@ -552,7 +552,7 @@ export default function BoardDetail() {
     setBoard({ ...board, columns: updatedColumns });
 
     try {
-      await fetch(`http://localhost:4000/api/tasks/${activeTaskId}/move`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/tasks/${activeTaskId}/move`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ columnId: targetColumnId })
@@ -593,7 +593,7 @@ export default function BoardDetail() {
   const updateTaskDetails = async (updates) => {
     if (!activeTaskId) return;
     try {
-      const response = await fetch(`http://localhost:4000/api/tasks/${activeTaskId}/details`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tasks/${activeTaskId}/details`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...updates, boardId: id })
@@ -615,7 +615,7 @@ export default function BoardDetail() {
     if (!window.confirm('¿Marcar esta tarea como completada?')) return;
     
     try {
-      const response = await fetch(`http://localhost:4000/api/tasks/${taskId}/complete`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tasks/${taskId}/complete`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ boardId: id })
@@ -652,7 +652,7 @@ export default function BoardDetail() {
     if (!newChecklistItem.trim() || !activeTaskId) return;
     
     try {
-      const response = await fetch('http://localhost:4000/api/checklist', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/checklist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: newChecklistItem, taskId: activeTaskId, boardId: id })
@@ -671,7 +671,7 @@ export default function BoardDetail() {
 
   const toggleChecklist = async (itemId, currentStatus) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/checklist/${itemId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/checklist/${itemId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isCompleted: !currentStatus, boardId: id })
@@ -691,7 +691,7 @@ export default function BoardDetail() {
   const handleDeleteChecklistItem = async (itemId) => {
     if (!window.confirm('¿Eliminar este elemento del checklist?')) return;
     try {
-      const response = await fetch(`http://localhost:4000/api/checklist/${itemId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/checklist/${itemId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ boardId: id })
@@ -714,7 +714,7 @@ export default function BoardDetail() {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/api/columns`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/columns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newColumnTitle, boardId: id }),
@@ -740,7 +740,7 @@ export default function BoardDetail() {
     if (!confirmDelete) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/api/columns/${columnId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/columns/${columnId}`, {
         method: 'DELETE'
       });
 
