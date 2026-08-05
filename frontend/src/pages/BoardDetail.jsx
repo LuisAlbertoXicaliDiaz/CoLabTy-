@@ -5,7 +5,7 @@ import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrate
 import { CSS } from '@dnd-kit/utilities';
 import { io } from 'socket.io-client';
 
-// --- SortableTask (sin cambios) ---
+// --- SortableTask ---
 function SortableTask({ task, onDelete, theme }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
 
@@ -55,7 +55,7 @@ function SortableTask({ task, onDelete, theme }) {
 
         {task.dueDate && (
           <span className="text-slate-400 font-semibold flex items-center gap-1">
-            📅 {task.dueDate}
+            📅 {new Date(task.dueDate).toLocaleDateString()}
           </span>
         )}
       </div>
@@ -63,7 +63,7 @@ function SortableTask({ task, onDelete, theme }) {
   );
 }
 
-// --- ColumnContainer (sin cambios) ---
+// --- ColumnContainer ---
 function ColumnContainer({ column, onDeleteTask, activeColumnId, setActiveColumnId, newTaskContent, setNewTaskContent, taskPriority, setTaskPriority, taskDueDate, setTaskDueDate, handleCreateTask, theme }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const isLight = theme === 'light';
@@ -187,10 +187,28 @@ export default function BoardDetail() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // --- Estados para el modal de tarea ---
+  const [activeTaskId, setActiveTaskId] = useState(null);
+  const [descriptionInput, setDescriptionInput] = useState('');
+  const [newChecklistItem, setNewChecklistItem] = useState('');
+  const [dueDateInput, setDueDateInput] = useState('');
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  // Función para obtener la tarea activa de forma segura
+  const getActiveTask = () => {
+    if (!board || !board.columns || !activeTaskId) return null;
+    for (const column of board.columns) {
+      const found = column.tasks.find(t => t.id === activeTaskId);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const activeTask = getActiveTask();
 
   // Al cargar el tablero, traemos el historial del chat
   useEffect(() => {
@@ -201,7 +219,7 @@ export default function BoardDetail() {
         const response = await fetch(`http://localhost:4000/api/boards/${id}/messages`);
         const data = await response.json();
         if (response.ok) {
-          setMessages(data); // Rellena el chat con lo que se habló antes
+          setMessages(data);
         }
       } catch (error) {
         console.error('Error al cargar historial de chat:', error);
@@ -217,8 +235,12 @@ export default function BoardDetail() {
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
-      fetchBoardDetails(id);
-      fetchNotifications(parsedUser.id);
+      if (id) {
+        fetchBoardDetails(id);
+        fetchNotifications(parsedUser.id);
+      } else {
+        navigate('/boards');
+      }
     } else {
       navigate('/login');
     }
@@ -231,10 +253,8 @@ export default function BoardDetail() {
     const newSocket = io('http://localhost:4000');
     setSocket(newSocket);
 
-    // Unirse a la sala del tablero
     newSocket.emit('join_board', id);
 
-    // Escuchar mensajes de esta sala
     newSocket.on('receive_message', (data) => {
       setMessages((prev) => [...prev, data]);
     });
@@ -264,11 +284,13 @@ export default function BoardDetail() {
       if (response.ok) {
         setBoard(data);
       } else {
-        alert(data.error);
+        alert(data.error || 'Error al cargar el tablero');
         navigate('/boards');
       }
     } catch (error) {
       console.error('Error al obtener el tablero:', error);
+      alert('Error de conexión con el servidor');
+      navigate('/boards');
     } finally {
       setLoading(false);
     }
@@ -306,7 +328,10 @@ export default function BoardDetail() {
   const handleDeleteTask = async (taskId) => {
     try {
       const response = await fetch(`http://localhost:4000/api/tasks/${taskId}`, { method: 'DELETE' });
-      if (response.ok) fetchBoardDetails(id);
+      if (response.ok) {
+        if (activeTaskId === taskId) setActiveTaskId(null);
+        fetchBoardDetails(id);
+      }
     } catch (error) {
       console.error('Error al eliminar tarea:', error);
     }
@@ -391,14 +416,12 @@ export default function BoardDetail() {
     const currentColumn = board.columns.find(col => col.tasks.some(t => t.id === activeTaskId));
     if (currentColumn && currentColumn.id === targetColumnId) return;
 
-    let movedTask = null;
     const updatedColumns = board.columns.map(col => {
       if (col.id === currentColumn.id) {
         return { ...col, tasks: col.tasks.filter(t => t.id !== activeTaskId) };
       }
       if (col.id === targetColumnId) {
         const taskToMove = currentColumn.tasks.find(t => t.id === activeTaskId);
-        movedTask = taskToMove;
         return { ...col, tasks: [...col.tasks, taskToMove] };
       }
       return col;
@@ -435,6 +458,58 @@ export default function BoardDetail() {
     });
 
     setMessageInput('');
+  };
+
+  // --- Funciones del modal de tarea ---
+  const openTaskModal = (task) => {
+    console.log('🔓 Abriendo modal para tarea:', task);
+    setActiveTaskId(task.id);
+    setDescriptionInput(task.description || '');
+    setDueDateInput(task.dueDate || '');
+  };
+
+  const updateTaskDetails = async (updates) => {
+    if (!activeTaskId) return;
+    try {
+      await fetch(`http://localhost:4000/api/tasks/${activeTaskId}/details`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...updates, boardId: id })
+      });
+      fetchBoardDetails(id);
+    } catch (error) {
+      console.error('Error actualizando tarea:', error);
+    }
+  };
+
+  const addChecklistItem = async (e) => {
+    e.preventDefault();
+    if (!newChecklistItem.trim() || !activeTaskId) return;
+    
+    try {
+      await fetch('http://localhost:4000/api/checklist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newChecklistItem, taskId: activeTaskId, boardId: id })
+      });
+      setNewChecklistItem('');
+      fetchBoardDetails(id);
+    } catch (error) {
+      console.error('Error en checklist:', error);
+    }
+  };
+
+  const toggleChecklist = async (itemId, currentStatus) => {
+    try {
+      await fetch(`http://localhost:4000/api/checklist/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isCompleted: !currentStatus, boardId: id })
+      });
+      fetchBoardDetails(id);
+    } catch (error) {
+      console.error('Error al cambiar checklist:', error);
+    }
   };
 
   // --- Temas ---
@@ -490,6 +565,10 @@ export default function BoardDetail() {
   if (!user || loading) {
     return <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-400 font-sans">Cargando tablero...</div>;
   }
+
+  // Logs de depuración
+  console.log('📋 Board cargado:', board);
+  console.log('🔍 Tarea activa:', activeTask);
 
   return (
     <div className={`flex h-screen ${currentTheme.bg} font-sans overflow-hidden transition-colors duration-300`}>
@@ -575,7 +654,6 @@ export default function BoardDetail() {
       {/* Panel flotante de Chat */}
       {isChatOpen && (
         <div className={`fixed bottom-4 right-4 w-96 h-[500px] ${currentTheme.chatBg} border rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50 transition-all duration-300`}>
-          {/* Cabecera del chat */}
           <div className={`flex justify-between items-center p-4 border-b ${theme === 'light' ? 'border-slate-200' : 'border-slate-800'}`}>
             <h3 className={`font-bold ${currentTheme.textMain}`}>💬 Chat - {board?.title}</h3>
             <button 
@@ -586,7 +664,6 @@ export default function BoardDetail() {
             </button>
           </div>
 
-          {/* Lista de mensajes */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.length === 0 ? (
               <p className={`text-center text-sm ${currentTheme.textMuted} mt-10`}>No hay mensajes aún. ¡Escribe algo!</p>
@@ -603,7 +680,6 @@ export default function BoardDetail() {
                   <div className="font-bold text-xs opacity-70 mb-1">
                     {msg.user?.name || 'Anónimo'}
                   </div>
-                  {/* 🔥 CORRECCIÓN AQUÍ: msg.content (o msg.message como fallback) */}
                   <div>{msg.content || msg.message}</div>
                 </div>
               ))
@@ -611,7 +687,6 @@ export default function BoardDetail() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input para enviar mensajes */}
           <form onSubmit={handleSendMessage} className={`p-4 border-t ${theme === 'light' ? 'border-slate-200' : 'border-slate-800'} flex gap-2`}>
             <input
               type="text"
@@ -634,7 +709,124 @@ export default function BoardDetail() {
         </div>
       )}
 
-      {/* Modal Invitar (sin cambios) */}
+      {/* MODAL DE DETALLES DE LA TAREA */}
+      {activeTask && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e) => { if(e.target === e.currentTarget) setActiveTaskId(null); }}>
+          <div className={`w-full max-w-3xl rounded-2xl border shadow-2xl flex flex-col max-h-[90vh] ${currentTheme.modalBg}`}>
+            
+            <div className="flex justify-between items-start p-6 border-b border-inherit shrink-0">
+              <h2 className="text-xl font-bold">{activeTask.content}</h2>
+              <button onClick={() => setActiveTaskId(null)} className="text-slate-400 hover:text-red-400 text-xl font-bold ml-4 transition-colors">✕</button>
+            </div>
+
+            <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+              
+              {/* Columna Izquierda: Descripción y Checklist */}
+              <div className="flex-1 p-6 overflow-y-auto space-y-8 border-r border-inherit">
+                
+                {/* Descripción */}
+                <div className="space-y-3">
+                  <h3 className="font-bold flex items-center gap-2 text-indigo-400">📝 Descripción</h3>
+                  <textarea
+                    value={descriptionInput}
+                    onChange={(e) => setDescriptionInput(e.target.value)}
+                    onBlur={() => updateTaskDetails({ description: descriptionInput })}
+                    placeholder="Añade una descripción más detallada..."
+                    className={`w-full p-4 rounded-xl text-sm min-h-[120px] resize-none outline-none border focus:ring-2 focus:ring-indigo-500 transition-shadow ${currentTheme.header}`}
+                  />
+                </div>
+
+                {/* Checklist */}
+                <div className="space-y-4">
+                  <h3 className="font-bold flex items-center gap-2 text-indigo-400">✅ Subtareas (Checklist)</h3>
+                  
+                  {activeTask.checklist?.length > 0 && (() => {
+                    const completed = activeTask.checklist.filter(c => c.isCompleted).length;
+                    const percent = Math.round((completed / activeTask.checklist.length) * 100);
+                    return (
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-indigo-400 w-8">{percent}%</span>
+                        <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${percent}%` }}></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="space-y-2">
+                    {activeTask.checklist?.map(item => (
+                      <div key={item.id} className="flex items-center gap-3 group bg-black/10 p-2 rounded-lg">
+                        <input 
+                          type="checkbox" 
+                          checked={item.isCompleted} 
+                          onChange={() => toggleChecklist(item.id, item.isCompleted)}
+                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                        <span className={`text-sm ${item.isCompleted ? 'line-through text-slate-500' : ''}`}>{item.content}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <form onSubmit={addChecklistItem} className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={newChecklistItem}
+                      onChange={(e) => setNewChecklistItem(e.target.value)}
+                      placeholder="Añadir un elemento..."
+                      className={`flex-1 p-2.5 rounded-lg text-sm border outline-none focus:border-indigo-500 ${currentTheme.header}`}
+                    />
+                    <button type="submit" className="px-4 py-2 bg-indigo-500/20 text-indigo-400 font-bold text-sm rounded-lg hover:bg-indigo-500 hover:text-white transition-colors">Añadir</button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Columna Derecha: Asignar, Fecha Límite y Acciones */}
+              <div className="w-full md:w-64 p-6 shrink-0 space-y-6 bg-black/10">
+                
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Asignar a</h4>
+                  <select 
+                    value={activeTask.assignedUserId || ""}
+                    onChange={(e) => updateTaskDetails({ assignedUserId: e.target.value ? parseInt(e.target.value) : null })}
+                    className={`w-full p-2.5 rounded-lg text-sm border outline-none cursor-pointer ${currentTheme.header}`}
+                  >
+                    <option value="">Nadie asignado</option>
+                    {board?.members?.map(member => (
+                      <option key={member.id} value={member.id}>{member.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Campo de Fecha Límite */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Fecha Límite</h4>
+                  <input
+                    type="date"
+                    value={dueDateInput}
+                    onChange={(e) => {
+                      setDueDateInput(e.target.value);
+                      updateTaskDetails({ dueDate: e.target.value });
+                    }}
+                    className={`w-full p-2.5 rounded-lg text-sm border outline-none cursor-pointer ${currentTheme.header}`}
+                  />
+                </div>
+
+                <div className="pt-4 border-t border-inherit">
+                  <button 
+                    onClick={() => handleDeleteTask(activeTask.id)}
+                    className="w-full py-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white font-bold text-sm rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    🗑️ Eliminar Tarea
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Invitar */}
       {isInviteModalOpen && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-6">

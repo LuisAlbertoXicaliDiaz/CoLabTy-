@@ -2,8 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
-import crypto from 'crypto'; // <-- Importado para generar el token
-import { Resend } from 'resend'; // <-- Importado para enviar correos
+import crypto from 'crypto';
+import { Resend } from 'resend';
 import pkg from '@prisma/client';
 const { PrismaClient } = pkg;
 
@@ -23,6 +23,18 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ==========================================
+// --- INICIALIZACIÓN DE SOCKET.IO Y SERVIDOR ---
+// (Lo subimos aquí para poder usar 'io' dentro de las rutas de las tareas)
+// ==========================================
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PATCH", "DELETE"]
+  }
+});
+
 // Inicializar Resend con tu clave API del archivo .env
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -30,7 +42,10 @@ app.get('/', (req, res) => {
   res.send('Servidor de CoLabTy funcionando al 100% 🚀');
 });
 
-// --- 1. RUTA DE REGISTRO ---
+// ==========================================
+// --- 1. RUTAS DE AUTENTICACIÓN ---
+// ==========================================
+
 app.post('/api/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -64,7 +79,6 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// --- 2. RUTA DE LOGIN ---
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -98,7 +112,10 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// --- 2.5 RUTA DE RECUPERACIÓN DE CONTRASEÑA (RESEND) ---
+// ==========================================
+// --- 2. RUTAS DE RECUPERACIÓN DE CONTRASEÑA ---
+// ==========================================
+
 app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body;
 
@@ -106,15 +123,12 @@ app.post('/api/forgot-password', async (req, res) => {
     const user = await prisma.user.findUnique({ where: { email } });
     
     if (!user) {
-      // Respondemos éxito por seguridad para no revelar si un correo existe o no
       return res.status(200).json({ message: 'Si el correo está registrado, recibirás un enlace.' });
     }
 
-    // 1. Generar token único y expiración (1 hora)
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiry = new Date(Date.now() + 3600000); 
+    const tokenExpiry = new Date(Date.now() + 3600000); // 1 hora
 
-    // 2. Guardar token en Prisma
     await prisma.user.update({
       where: { email },
       data: {
@@ -123,12 +137,10 @@ app.post('/api/forgot-password', async (req, res) => {
       },
     });
 
-    // 3. Crear el enlace que apunta al frontend
     const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
 
-    // 4. Enviar correo usando Resend
     const { data, error } = await resend.emails.send({
-      from: 'CoLabTy <onboarding@resend.dev>', // Correo por defecto de Resend para pruebas
+      from: 'CoLabTy <onboarding@resend.dev>', 
       to: user.email, 
       subject: 'Recuperación de contraseña - CoLabTy',
       html: `
@@ -140,7 +152,6 @@ app.post('/api/forgot-password', async (req, res) => {
             <a href="${resetUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Restablecer mi contraseña</a>
           </div>
           <p style="color: #555; font-size: 14px;">Este enlace expirará en 1 hora por motivos de seguridad.</p>
-          <p style="color: #777; font-size: 12px; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 10px;">Si no solicitaste este cambio, ignora este correo. Tu cuenta seguirá protegida.</p>
         </div>
       `
     });
@@ -157,11 +168,47 @@ app.post('/api/forgot-password', async (req, res) => {
   }
 });
 
+// NUEVO: Ruta para guardar la nueva contraseña
+app.post('/api/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  try {
+    const user = await prisma.user.findFirst({
+      where: {
+        resetPasswordToken: token,
+        resetPasswordExpires: {
+          gt: new Date()
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'El enlace es inválido o ha expirado.' });
+    }
+
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetPasswordToken: null,
+        resetPasswordExpires: null
+      }
+    });
+
+    res.status(200).json({ message: 'Contraseña actualizada correctamente.' });
+  } catch (error) {
+    console.error('Error al restablecer contraseña:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
 // ==========================================
 // --- 3. RUTAS DE TABLEROS KANBAN ---
 // ==========================================
 
-// Obtener todos los tableros de un usuario (Propios + en los que ya fue ACEPTADO)
 app.get('/api/boards/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -190,7 +237,6 @@ app.get('/api/boards/:userId', async (req, res) => {
   }
 });
 
-// Obtener un tablero individual por su ID (para la vista de detalle)
 app.get('/api/boards/single/:boardId', async (req, res) => {
   try {
     const { boardId } = req.params;
@@ -201,6 +247,10 @@ app.get('/api/boards/single/:boardId', async (req, res) => {
         columns: {
           include: {
             tasks: {
+              include: {
+                assignedUser: { select: { id: true, name: true, email: true } }, // NUEVO: Incluir datos del responsable
+                checklist: true // NUEVO: Incluir la checklist
+              },
               orderBy: { order: 'asc' }
             }
           },
@@ -220,7 +270,6 @@ app.get('/api/boards/single/:boardId', async (req, res) => {
   }
 });
 
-// Crear un nuevo tablero y sus columnas por defecto
 app.post('/api/boards', async (req, res) => {
   try {
     const { title, userId } = req.body;
@@ -255,20 +304,30 @@ app.post('/api/boards', async (req, res) => {
     });
 
     res.status(201).json({ message: '¡Tablero creado con éxito!', board: completeBoard });
-
   } catch (error) {
     console.error('Error al crear tablero:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
+app.delete('/api/boards/:boardId', async (req, res) => {
+  try {
+    const { boardId } = req.params;
+    await prisma.board.delete({ where: { id: boardId } });
+    res.status(200).json({ message: '¡Tablero eliminado con éxito!' });
+  } catch (error) {
+    console.error('Error al eliminar tablero:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // ==========================================
-// --- 4. RUTAS DE TAREAS ---
+// --- 4. RUTAS DE TAREAS (AHORA CON SOCKETS) ---
 // ==========================================
 
 app.post('/api/tasks', async (req, res) => {
   try {
-    const { content, columnId, priority, dueDate } = req.body;
+    const { content, columnId, priority, dueDate, boardId } = req.body; // Se agrega boardId desde el frontend para el socket
 
     if (!content || !columnId) {
       return res.status(400).json({ error: 'El contenido y la columna son obligatorios' });
@@ -285,8 +344,14 @@ app.post('/api/tasks', async (req, res) => {
         order: taskCount + 1,
         priority: priority || 'media',
         dueDate: dueDate || null
-      }
+      },
+      include: { assignedUser: true, checklist: true }
     });
+
+    // 🟢 NUEVO: Emitir evento por Socket.io a la sala del tablero
+    if (boardId) {
+      io.to(boardId).emit('board_updated');
+    }
 
     return res.status(201).json({ message: '¡Tarea creada con éxito!', task: newTask });
   } catch (error) {
@@ -295,14 +360,24 @@ app.post('/api/tasks', async (req, res) => {
   }
 });
 
-// --- 5. RUTA PARA ELIMINAR TAREAS ---
 app.delete('/api/tasks/:taskId', async (req, res) => {
   try {
     const { taskId } = req.params;
 
+    // Buscar la tarea primero para saber a qué tablero pertenece y emitir el evento
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: { column: true }
+    });
+
     await prisma.task.delete({
       where: { id: taskId }
     });
+
+    // 🟢 NUEVO: Emitir evento por Socket.io
+    if (task && task.column && task.column.boardId) {
+      io.to(task.column.boardId).emit('board_updated');
+    }
 
     res.status(200).json({ message: '¡Tarea eliminada con éxito!' });
   } catch (error) {
@@ -311,43 +386,33 @@ app.delete('/api/tasks/:taskId', async (req, res) => {
   }
 });
 
-// --- 6. RUTA PARA ELIMINAR TABLEROS ---
-app.delete('/api/boards/:boardId', async (req, res) => {
-  try {
-    const { boardId } = req.params;
-
-    await prisma.board.delete({
-      where: { id: boardId }
-    });
-
-    res.status(200).json({ message: '¡Tablero eliminado con éxito!' });
-  } catch (error) {
-    console.error('Error al eliminar tablero:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// --- 7. RUTA PARA MOVER TAREAS ENTRE COLUMNAS ---
 app.patch('/api/tasks/:taskId/move', async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { columnId } = req.body;
+    // Se agregan newOrder y boardId que enviaremos desde el frontend con Drag & Drop
+    const { columnId, newOrder, boardId } = req.body; 
 
     if (!columnId) {
       return res.status(400).json({ error: 'La columna de destino es obligatoria' });
     }
 
-    const taskCount = await prisma.task.count({
-      where: { columnId: columnId }
-    });
+    let order = newOrder;
+    if (order === undefined) {
+      order = await prisma.task.count({ where: { columnId: columnId } }) + 1;
+    }
 
     const updatedTask = await prisma.task.update({
       where: { id: taskId },
       data: {
         columnId: columnId,
-        order: taskCount + 1
+        order: order
       }
     });
+
+    // 🟢 NUEVO: Emitir evento por Socket.io
+    if (boardId) {
+      io.to(boardId).emit('board_updated');
+    }
 
     return res.status(200).json({ message: '¡Tarea movida con éxito!', task: updatedTask });
   } catch (error) {
@@ -357,10 +422,9 @@ app.patch('/api/tasks/:taskId/move', async (req, res) => {
 });
 
 // ==========================================
-// --- 8. RUTAS DE INVITACIONES Y NOTIFICACIONES ---
+// --- 5. RUTAS DE INVITACIONES Y NOTIFICACIONES ---
 // ==========================================
 
-// 8.1 Invitar usuario a un tablero
 app.post('/api/boards/:boardId/invite', async (req, res) => {
   try {
     const { boardId } = req.params;
@@ -370,9 +434,7 @@ app.post('/api/boards/:boardId/invite', async (req, res) => {
       return res.status(400).json({ error: 'El correo electrónico es obligatorio' });
     }
 
-    const userToInvite = await prisma.user.findUnique({
-      where: { email }
-    });
+    const userToInvite = await prisma.user.findUnique({ where: { email } });
 
     if (!userToInvite) {
       return res.status(404).json({ error: 'El usuario con ese correo no está registrado en CoLabTy' });
@@ -395,7 +457,7 @@ app.post('/api/boards/:boardId/invite', async (req, res) => {
       data: {
         userId: userToInvite.id,
         boardId: boardId,
-        status: 'pending' // Estado por defecto
+        status: 'pending' 
       }
     });
 
@@ -406,7 +468,6 @@ app.post('/api/boards/:boardId/invite', async (req, res) => {
   }
 });
 
-// 8.2 Obtener notificaciones pendientes de un usuario
 app.get('/api/notifications/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -419,7 +480,7 @@ app.get('/api/notifications/:userId', async (req, res) => {
       include: {
         board: {
           include: {
-            user: { select: { name: true } } // Propietario del tablero
+            user: { select: { name: true } }
           }
         }
       }
@@ -432,11 +493,10 @@ app.get('/api/notifications/:userId', async (req, res) => {
   }
 });
 
-// 8.3 Aceptar o Rechazar una invitación
 app.patch('/api/notifications/:inviteId', async (req, res) => {
   try {
     const { inviteId } = req.params;
-    const { action } = req.body; // "accept" o "reject"
+    const { action } = req.body; 
 
     if (!action || !['accept', 'reject'].includes(action)) {
       return res.status(400).json({ error: 'La acción debe ser "accept" o "reject"' });
@@ -461,10 +521,9 @@ app.patch('/api/notifications/:inviteId', async (req, res) => {
 });
 
 // ==========================================
-// --- 9. RUTAS DE MENSAJES (CHAT) ---
+// --- 6. RUTAS DE MENSAJES (CHAT) ---
 // ==========================================
 
-// Obtener historial de mensajes de un tablero
 app.get('/api/boards/:boardId/messages', async (req, res) => {
   try {
     const { boardId } = req.params;
@@ -485,30 +544,18 @@ app.get('/api/boards/:boardId/messages', async (req, res) => {
 });
 
 // ==========================================
-// --- CONFIGURACIÓN DE SOCKET.IO (CHAT POR TABLERO) ---
+// --- LÓGICA EVENTOS DE SOCKET.IO ---
 // ==========================================
-
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
-
 io.on('connection', (socket) => {
-  console.log('Usuario conectado al chat:', socket.id);
+  console.log('Usuario conectado al chat/tablero:', socket.id);
 
-  // El cliente se une a una sala específica de un tablero
   socket.on('join_board', (boardId) => {
     socket.join(boardId);
     console.log(`Usuario ${socket.id} se unió a la sala del tablero: ${boardId}`);
   });
 
-  // Escuchar mensajes y guardarlos en la BD, luego emitirlos a la sala
   socket.on('send_message', async (data) => {
     try {
-      // Soportar tanto data.content como data.message por seguridad
       const messageText = data.content || data.message;
       const targetBoardId = data.boardId;
       const currentUserId = data.userId;
@@ -536,14 +583,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('Usuario desconectado del chat');
+    console.log('Usuario desconectado del socket');
   });
 });
 
 // ==========================================
-// --- INICIO DEL SERVIDOR HTTP + SOCKETS ---
+// --- ARRANCAR EL SERVIDOR ---
 // ==========================================
-
 const PORT = process.env.PORT || 4000;
 httpServer.listen(PORT, () => {
   console.log(`Servidor y WebSockets corriendo en http://localhost:${PORT}`);
