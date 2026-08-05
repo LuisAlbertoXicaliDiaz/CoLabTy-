@@ -20,8 +20,9 @@ model User {
 
   boards               Board[]     
   userBoards           UserBoard[] 
-  messages             Message[]   
-  assignedTasks        Task[]      // NUEVO: Tareas asignadas a este usuario
+  messages             Message[]
+  // ✅ Asignaciones a tareas (muchos a muchos)
+  taskAssignments      TaskAssignment[]
 }
 
 model Board {
@@ -38,34 +39,47 @@ model Board {
 }
 
 model Column {
-  id        String   @id @default(uuid())
-  title     String   
-  order     Int      
-  
-  boardId   String
+  id        String   @id @default(cuid())
+  title     String
+  order     Int
+  boardId   String   @map("board_id")
   board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  
-  tasks     Task[]   
+  tasks     Task[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("columns")
 }
 
 model Task {
   id             String   @id @default(uuid())
-  content        String   
-  description    String?  // NUEVO: Descripción enriquecida opcional
-  order          Int      
-  priority       String   @default("media") 
-  dueDate        String?  
+  content        String
+  description    String?
+  startDate      String?
+  dueDate        String?
+  priority       String   @default("media")
+  order          Int
   
   columnId       String
   column         Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
 
-  assignedUserId Int?     // NUEVO: ID del usuario responsable (opcional)
-  assignedUser   User?    @relation(fields: [assignedUserId], references: [id])
+  // ✅ RELACIÓN MUCHOS A MUCHOS CON USUARIOS
+  assignedUsers  TaskAssignment[] // Lista de asignaciones
 
-  checklist      ChecklistItem[] // NUEVO: Relación con la lista de subtareas
+  checklist      ChecklistItem[]
 }
 
-// NUEVO: Modelo para las subtareas (Checklist)
+// ✅ NUEVO: Modelo de asignación de usuarios a tareas (muchos a muchos)
+model TaskAssignment {
+  id        Int    @id @default(autoincrement())
+  taskId    String
+  userId    Int
+  task      Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+}
+
 model ChecklistItem {
   id          String  @id @default(uuid())
   content     String
