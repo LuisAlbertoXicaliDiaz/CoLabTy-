@@ -1014,249 +1014,250 @@ export default function BoardDetail() {
       )}
 
       {/* MODAL DE DETALLES DE LA TAREA */}
-      {activeTask && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e) => { if(e.target === e.currentTarget) setActiveTaskId(null); }}>
-          <div className={`w-full max-w-5xl rounded-2xl border shadow-2xl flex flex-col max-h-[90vh] ${currentTheme.chatBg}`}>
+{activeTask && (
+  <div 
+    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" 
+    onClick={(e) => { if(e.target === e.currentTarget) setActiveTaskId(null); }}
+  >
+    {/* ✅ AQUÍ AGREGAMOS overflow-y-auto para scroll en pantallas pequeñas */}
+    <div className={`w-full max-w-5xl rounded-2xl border shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto ${currentTheme.chatBg}`}>
+      
+      <div className="flex justify-between items-start p-6 border-b border-inherit shrink-0 sticky top-0 bg-inherit z-10">
+        <h2 className="text-xl font-bold">{activeTask.content}</h2>
+        <button onClick={() => setActiveTaskId(null)} className="text-slate-400 hover:text-red-400 text-xl font-bold ml-4 transition-colors cursor-pointer">✕</button>
+      </div>
+
+      <div className="flex flex-col md:flex-row flex-1">
+        
+        {/* Columna izquierda */}
+        <div className="flex-1 p-6 overflow-y-auto space-y-8 border-r border-inherit">
+          <div className="space-y-3">
+            <h3 className="font-bold flex items-center gap-2 text-indigo-400">📝 Descripción</h3>
+            <textarea
+              value={descriptionInput}
+              onChange={(e) => setDescriptionInput(e.target.value)}
+              placeholder="Añade una descripción más detallada..."
+              className={`w-full p-4 rounded-xl text-sm min-h-[120px] resize-none outline-none border focus:ring-2 focus:ring-indigo-500 transition-shadow ${currentTheme.header}`}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-bold flex items-center gap-2 text-indigo-400">✅ Subtareas (Checklist)</h3>
             
-            <div className="flex justify-between items-start p-6 border-b border-inherit shrink-0">
-              <h2 className="text-xl font-bold">{activeTask.content}</h2>
-              <button onClick={() => setActiveTaskId(null)} className="text-slate-400 hover:text-red-400 text-xl font-bold ml-4 transition-colors cursor-pointer">✕</button>
-            </div>
-
-            <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-              
-              {/* Columna izquierda */}
-              <div className="flex-1 p-6 overflow-y-auto space-y-8 border-r border-inherit">
-                <div className="space-y-3">
-                  <h3 className="font-bold flex items-center gap-2 text-indigo-400">📝 Descripción</h3>
-                  <textarea
-                    value={descriptionInput}
-                    onChange={(e) => setDescriptionInput(e.target.value)}
-                    placeholder="Añade una descripción más detallada..."
-                    className={`w-full p-4 rounded-xl text-sm min-h-[120px] resize-none outline-none border focus:ring-2 focus:ring-indigo-500 transition-shadow ${currentTheme.header}`}
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-bold flex items-center gap-2 text-indigo-400">✅ Subtareas (Checklist)</h3>
-                  
-                  {activeTask.checklist?.length > 0 && (() => {
-                    const completed = activeTask.checklist.filter(c => c.isCompleted).length;
-                    const percent = Math.round((completed / activeTask.checklist.length) * 100);
-                    return (
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-indigo-400 w-8">{percent}%</span>
-                        <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${percent}%` }}></div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <div className="space-y-2">
-                    {activeTask.checklist?.map(item => (
-                      <div key={item.id} className="flex items-center justify-between group bg-black/10 p-2.5 rounded-lg border border-slate-800/40">
-                        <label className="flex items-center gap-3 cursor-pointer flex-1">
-                          <input 
-                            type="checkbox" 
-                            checked={item.isCompleted} 
-                            onChange={() => toggleChecklist(item.id, item.isCompleted)}
-                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                          />
-                          <span className={`text-sm ${item.isCompleted ? 'line-through text-slate-500' : 'text-slate-200'}`}>{item.content}</span>
-                        </label>
-                        <button 
-                          type="button" 
-                          onClick={() => handleDeleteChecklistItem(item.id)}
-                          className="text-slate-500 hover:text-red-400 text-xs font-bold px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
+            {activeTask.checklist?.length > 0 && (() => {
+              const completed = activeTask.checklist.filter(c => c.isCompleted).length;
+              const percent = Math.round((completed / activeTask.checklist.length) * 100);
+              return (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-indigo-400 w-8">{percent}%</span>
+                  <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${percent}%` }}></div>
                   </div>
+                </div>
+              );
+            })()}
 
-                  <form onSubmit={addChecklistItem} className="flex gap-2">
+            <div className="space-y-2">
+              {activeTask.checklist?.map(item => (
+                <div key={item.id} className="flex items-center justify-between group bg-black/10 p-2.5 rounded-lg border border-slate-800/40">
+                  <label className="flex items-center gap-3 cursor-pointer flex-1">
                     <input 
-                      type="text" 
-                      value={newChecklistItem}
-                      onChange={(e) => setNewChecklistItem(e.target.value)}
-                      placeholder="Añadir un elemento..."
-                      className={`flex-1 p-2.5 rounded-lg text-sm border outline-none focus:border-indigo-500 ${currentTheme.header}`}
+                      type="checkbox" 
+                      checked={item.isCompleted} 
+                      onChange={() => toggleChecklist(item.id, item.isCompleted)}
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                     />
-                    <button type="submit" className="px-4 py-2 bg-indigo-500/20 text-indigo-400 font-bold text-sm rounded-lg hover:bg-indigo-500 hover:text-white transition-colors cursor-pointer">Añadir</button>
-                  </form>
-                </div>
-              </div>
-
-              {/* Columna derecha */}
-              <div className="w-full md:w-80 p-6 shrink-0 space-y-6 bg-black/10 flex flex-col justify-between">
-                <div className="space-y-6">
-                  {/* ASIGNACIÓN CON CHIPS */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Asignar a</h4>
-                    
-                    {/* Lista de chips */}
-                    <div className="flex flex-wrap gap-2 min-h-[40px] p-2 border border-slate-700/50 rounded-lg bg-black/10">
-                      {activeTask.assignedUsers?.map((au) => (
-                        <div
-                          key={au.user.id}
-                          className="flex items-center gap-1.5 bg-indigo-500/20 text-indigo-300 px-3 py-1.5 rounded-full text-sm font-medium border border-indigo-500/30"
-                        >
-                          <span className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
-                            {au.user.name.substring(0,2).toUpperCase()}
-                          </span>
-                          {au.user.name}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newAssignedUsers = activeTask.assignedUsers.filter(a => a.user.id !== au.user.id);
-                              updateTaskDetails({ assignedUserIds: newAssignedUsers.map(a => String(a.user.id)) });
-                            }}
-                            className="text-slate-400 hover:text-red-400 transition-colors ml-1 text-xs"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                      {(!activeTask.assignedUsers || activeTask.assignedUsers.length === 0) && (
-                        <span className="text-slate-500 text-sm italic">Ningún usuario asignado</span>
-                      )}
-                    </div>
-
-                    {/* Selector para añadir */}
-                    <div className="relative">
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          const userId = e.target.value;
-                          if (!userId) return;
-                          
-                          if (activeTask.assignedUsers?.some(au => String(au.user.id) === userId)) {
-                            toast.warning('Este usuario ya está asignado');
-                            return;
-                          }
-
-                          const currentIds = activeTask.assignedUsers?.map(au => String(au.user.id)) || [];
-                          const newIds = [...currentIds, userId];
-                          updateTaskDetails({ assignedUserIds: newIds });
-                          
-                          e.target.value = "";
-                        }}
-                        className={`w-full p-2.5 rounded-lg text-sm border outline-none cursor-pointer ${currentTheme.header}`}
-                      >
-                        <option value="">+ Añadir usuario...</option>
-                        {teamMembers
-                          .filter(member => !activeTask.assignedUsers?.some(au => au.user.id === member.id))
-                          .map(member => (
-                            <option key={member.id} value={member.id}>
-                              {member.name}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-
-                    <p className="text-[10px] text-slate-500">
-                      {activeTask.assignedUsers?.length || 0} usuario(s) asignado(s)
-                    </p>
-                  </div>
-
-                  {/* PRIORIDAD */}
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Prioridad</h4>
-                    <select
-                      value={activeTask.priority || 'media'}
-                      onChange={(e) => updateTaskDetails({ priority: e.target.value })}
-                      className={`w-full p-2.5 rounded-lg text-sm border outline-none cursor-pointer ${currentTheme.header}`}
-                    >
-                      <option value="baja">🟢 Baja</option>
-                      <option value="media">🟡 Media</option>
-                      <option value="alta">🔴 Alta</option>
-                    </select>
-                  </div>
-
-                  {/* Fechas con DatePicker */}
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Fecha de Inicio</h4>
-                    <DatePicker
-                      selected={activeTask.startDate ? new Date(activeTask.startDate) : null}
-                      onChange={(date) => {
-                        const formattedDate = date ? date.toISOString().split('T')[0] : null;
-                        updateTaskDetails({ startDate: formattedDate });
-                      }}
-                      dateFormat="dd/MM/yyyy"
-                      placeholderText="Seleccionar fecha"
-                      className={`w-full p-2.5 rounded-lg text-sm border outline-none cursor-pointer ${currentTheme.header}`}
-                      popperClassName="react-datepicker-popper"
-                      calendarClassName="react-datepicker-custom"
-                      wrapperClassName="w-full"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Fecha de Finalización</h4>
-                    <DatePicker
-                      selected={dueDateInput ? new Date(dueDateInput) : null}
-                      onChange={(date) => {
-                        const formattedDate = date ? date.toISOString().split('T')[0] : null;
-                        setDueDateInput(formattedDate);
-                        updateTaskDetails({ dueDate: formattedDate });
-                      }}
-                      dateFormat="dd/MM/yyyy"
-                      placeholderText="Seleccionar fecha"
-                      className={`w-full p-2.5 rounded-lg text-sm border outline-none cursor-pointer ${currentTheme.header}`}
-                      popperClassName="react-datepicker-popper"
-                      calendarClassName="react-datepicker-custom"
-                      wrapperClassName="w-full"
-                    />
-                  </div>
-                </div>
-
-                {/* Botones */}
-                <div className="space-y-3 pt-4 border-t border-inherit">
+                    <span className={`text-sm ${item.isCompleted ? 'line-through text-slate-500' : 'text-slate-200'}`}>{item.content}</span>
+                  </label>
                   <button 
-                    onClick={async () => {
-                      await updateTaskDetails({ description: descriptionInput });
-                      toast.success('¡Cambios guardados correctamente!', {
-                        icon: '🚀',
-                        duration: 2500,
-                        style: {
-                          background: '#0f172a',
-                          color: '#e2e8f0',
-                          border: '1px solid #22c55e',
-                          borderRadius: '12px',
-                          padding: '16px 24px',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-                        },
-                      });
-                      setTimeout(() => setActiveTaskId(null), 500);
-                    }}
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-lg transition-colors shadow-md cursor-pointer"
+                    type="button" 
+                    onClick={() => handleDeleteChecklistItem(item.id)}
+                    className="text-slate-500 hover:text-red-400 text-xs font-bold px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    💾 Guardar Cambios
-                  </button>
-
-                  <button 
-                    onClick={() => handleCompleteTask(activeTask.id)}
-                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-lg transition-colors shadow-md cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    ✅ Completar Tarea
-                  </button>
-
-                  <button 
-                    onClick={() => handleDeleteTask(activeTask.id)}
-                    className="w-full py-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white font-bold text-sm rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    🗑️ Eliminar Tarea
+                    ✕
                   </button>
                 </div>
-              </div>
+              ))}
             </div>
+
+            <form onSubmit={addChecklistItem} className="flex gap-2">
+              <input 
+                type="text" 
+                value={newChecklistItem}
+                onChange={(e) => setNewChecklistItem(e.target.value)}
+                placeholder="Añadir un elemento..."
+                className={`flex-1 p-2.5 rounded-lg text-sm border outline-none focus:border-indigo-500 ${currentTheme.header}`}
+              />
+              <button type="submit" className="px-4 py-2 bg-indigo-500/20 text-indigo-400 font-bold text-sm rounded-lg hover:bg-indigo-500 hover:text-white transition-colors cursor-pointer">Añadir</button>
+            </form>
           </div>
         </div>
-      )}
+
+        {/* Columna derecha */}
+        <div className="w-full md:w-80 p-6 shrink-0 space-y-6 bg-black/10 flex flex-col justify-between">
+          <div className="space-y-6">
+            {/* ASIGNACIÓN CON CHIPS */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Asignar a</h4>
+              
+              <div className="flex flex-wrap gap-2 min-h-[40px] p-2 border border-slate-700/50 rounded-lg bg-black/10">
+                {activeTask.assignedUsers?.map((au) => (
+                  <div
+                    key={au.user.id}
+                    className="flex items-center gap-1.5 bg-indigo-500/20 text-indigo-300 px-3 py-1.5 rounded-full text-sm font-medium border border-indigo-500/30"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
+                      {au.user.name.substring(0,2).toUpperCase()}
+                    </span>
+                    {au.user.name}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newAssignedUsers = activeTask.assignedUsers.filter(a => a.user.id !== au.user.id);
+                        updateTaskDetails({ assignedUserIds: newAssignedUsers.map(a => String(a.user.id)) });
+                      }}
+                      className="text-slate-400 hover:text-red-400 transition-colors ml-1 text-xs"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                {(!activeTask.assignedUsers || activeTask.assignedUsers.length === 0) && (
+                  <span className="text-slate-500 text-sm italic">Ningún usuario asignado</span>
+                )}
+              </div>
+
+              <select
+                value=""
+                onChange={(e) => {
+                  const userId = e.target.value;
+                  if (!userId) return;
+                  
+                  if (activeTask.assignedUsers?.some(au => String(au.user.id) === userId)) {
+                    toast.warning('Este usuario ya está asignado');
+                    return;
+                  }
+
+                  const currentIds = activeTask.assignedUsers?.map(au => String(au.user.id)) || [];
+                  const newIds = [...currentIds, userId];
+                  updateTaskDetails({ assignedUserIds: newIds });
+                  
+                  e.target.value = "";
+                }}
+                className={`w-full p-2.5 rounded-lg text-sm border outline-none cursor-pointer ${currentTheme.header}`}
+              >
+                <option value="">+ Añadir usuario...</option>
+                {teamMembers
+                  .filter(member => !activeTask.assignedUsers?.some(au => au.user.id === member.id))
+                  .map(member => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+              </select>
+
+              <p className="text-[10px] text-slate-500">
+                {activeTask.assignedUsers?.length || 0} usuario(s) asignado(s)
+              </p>
+            </div>
+
+            {/* PRIORIDAD */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Prioridad</h4>
+              <select
+                value={activeTask.priority || 'media'}
+                onChange={(e) => updateTaskDetails({ priority: e.target.value })}
+                className={`w-full p-2.5 rounded-lg text-sm border outline-none cursor-pointer ${currentTheme.header}`}
+              >
+                <option value="baja">🟢 Baja</option>
+                <option value="media">🟡 Media</option>
+                <option value="alta">🔴 Alta</option>
+              </select>
+            </div>
+
+            {/* Fechas con DatePicker */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Fecha de Inicio</h4>
+              <DatePicker
+                selected={activeTask.startDate ? new Date(activeTask.startDate) : null}
+                onChange={(date) => {
+                  const formattedDate = date ? date.toISOString().split('T')[0] : null;
+                  updateTaskDetails({ startDate: formattedDate });
+                }}
+                dateFormat="dd/MM/yyyy"
+                placeholderText="Seleccionar fecha"
+                className={`w-full p-2.5 rounded-lg text-sm border outline-none cursor-pointer ${currentTheme.header}`}
+                popperClassName="react-datepicker-popper"
+                calendarClassName="react-datepicker-custom"
+                wrapperClassName="w-full"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Fecha de Finalización</h4>
+              <DatePicker
+                selected={dueDateInput ? new Date(dueDateInput) : null}
+                onChange={(date) => {
+                  const formattedDate = date ? date.toISOString().split('T')[0] : null;
+                  setDueDateInput(formattedDate);
+                  updateTaskDetails({ dueDate: formattedDate });
+                }}
+                dateFormat="dd/MM/yyyy"
+                placeholderText="Seleccionar fecha"
+                className={`w-full p-2.5 rounded-lg text-sm border outline-none cursor-pointer ${currentTheme.header}`}
+                popperClassName="react-datepicker-popper"
+                calendarClassName="react-datepicker-custom"
+                wrapperClassName="w-full"
+              />
+            </div>
+          </div>
+
+          {/* Botones */}
+          <div className="space-y-3 pt-4 border-t border-inherit">
+            <button 
+              onClick={async () => {
+                await updateTaskDetails({ description: descriptionInput });
+                toast.success('¡Cambios guardados correctamente!', {
+                  icon: '🚀',
+                  duration: 2500,
+                  style: {
+                    background: '#0f172a',
+                    color: '#e2e8f0',
+                    border: '1px solid #22c55e',
+                    borderRadius: '12px',
+                    padding: '16px 24px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                  },
+                });
+                setTimeout(() => setActiveTaskId(null), 500);
+              }}
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-lg transition-colors shadow-md cursor-pointer"
+            >
+              💾 Guardar Cambios
+            </button>
+
+            <button 
+              onClick={() => handleCompleteTask(activeTask.id)}
+              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-lg transition-colors shadow-md cursor-pointer flex items-center justify-center gap-2"
+            >
+              ✅ Completar Tarea
+            </button>
+
+            <button 
+              onClick={() => handleDeleteTask(activeTask.id)}
+              className="w-full py-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white font-bold text-sm rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            >
+              🗑️ Eliminar Tarea
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Modal Invitar */}
       {isInviteModalOpen && (
